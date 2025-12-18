@@ -1,0 +1,78 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Thrive Church AWS Lambdas - Podcast RSS Generation
+
+# =============================================================================
+# PARAMETERS
+# =============================================================================
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues:
+      - dev
+      - prod
+    Description: Deployment environment
+
+# =============================================================================
+# GLOBALS
+# =============================================================================
+Globals:
+  Function:
+    Runtime: python3.11
+    Timeout: 60
+    MemorySize: 256
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+
+# =============================================================================
+# RESOURCES
+# =============================================================================
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # Podcast RSS Generator Lambda
+  # ---------------------------------------------------------------------------
+  PodcastRssGeneratorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub podcast-rss-generator-${Environment}
+      Description: Generates and updates podcast RSS feed from PodcastEpisodes collection
+      Handler: handler.lambda_handler
+      CodeUri: lambdas/podcast_rss_generator/
+      Timeout: 120
+      MemorySize: 256
+      # Pre-created role with S3 + Logs + Secrets Manager access
+      Role: arn:aws:iam::349570132161:role/podcast-lambda-execution-role
+      Environment:
+        Variables:
+          # Non-secret config
+          S3_BUCKET: thrive-audio
+          S3_FEED_KEY: feed/rss.xml
+          # Secrets Manager ARNs - Lambda fetches at runtime
+          MONGODB_SECRET_ARN: arn:aws:secretsmanager:us-east-2:349570132161:secret:thrive-api/database
+          MONGODB_SECRET_KEY: MongoConnectionString
+          OPENAI_SECRET_ARN: arn:aws:secretsmanager:us-east-2:349570132161:secret:thrive-api/openai
+
+  # Lambda Log Group with retention
+  PodcastRssGeneratorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/podcast-rss-generator-${Environment}
+      RetentionInDays: 14
+
+# =============================================================================
+# OUTPUTS
+# =============================================================================
+Outputs:
+  PodcastRssGeneratorArn:
+    Description: Podcast RSS Generator Lambda ARN
+    Value: !GetAtt PodcastRssGeneratorFunction.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-PodcastRssGeneratorArn
+
+  PodcastRssGeneratorName:
+    Description: Podcast RSS Generator Lambda Name
+    Value: !Ref PodcastRssGeneratorFunction
+

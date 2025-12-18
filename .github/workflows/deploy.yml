@@ -1,0 +1,50 @@
+name: Deploy Lambdas
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Manual trigger
+
+env:
+  AWS_REGION: us-east-2
+  STACK_NAME: thrive-lambdas
+
+jobs:
+  deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build SAM application
+        run: sam build
+
+      - name: Deploy SAM application
+        run: |
+          sam deploy \
+            --stack-name ${{ env.STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --s3-bucket thrive-sam-deployments \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --capabilities CAPABILITY_IAM \
+            --parameter-overrides Environment=prod
+
