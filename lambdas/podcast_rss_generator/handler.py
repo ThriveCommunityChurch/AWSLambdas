@@ -123,11 +123,13 @@ def get_mongodb_client():
     )
 
 
-def format_duration(seconds: int) -> str:
+def format_duration(seconds: float) -> str:
     """Convert seconds to HH:MM:SS format for iTunes."""
-    hours = seconds // 3600
-    minutes = (seconds % 3600) // 60
-    secs = seconds % 60
+    # Convert to int to handle float durations from MongoDB
+    total_seconds = int(seconds)
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    secs = total_seconds % 60
     return f"{hours:02d}:{minutes:02d}:{secs:02d}"
 
 
