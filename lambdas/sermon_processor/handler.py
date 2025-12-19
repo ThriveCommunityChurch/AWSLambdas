@@ -22,7 +22,7 @@ from bson import ObjectId
 
 # Configuration
 DB_NAME = 'SermonSeries'
-COLLECTION_NAME = 'SermonMessages'
+COLLECTION_NAME = 'Messages'
 
 # AWS clients
 secrets_client = boto3.client('secretsmanager', region_name='us-east-2')

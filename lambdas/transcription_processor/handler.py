@@ -83,9 +83,9 @@ def get_mongodb_client():
 
 
 def get_message_metadata(db, message_id: str) -> Optional[Dict[str, Any]]:
-    """Fetch message metadata from SermonMessages collection."""
+    """Fetch message metadata from Messages collection."""
     try:
-        message = db['SermonMessages'].find_one({'_id': ObjectId(message_id)})
+        message = db['Messages'].find_one({'_id': ObjectId(message_id)})
         if not message:
             print(f"Message not found: {message_id}")
             return None
