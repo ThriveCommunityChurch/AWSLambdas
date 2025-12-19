@@ -224,8 +224,17 @@ def build_item_xml(episode: dict) -> str:
     title = escape_xml(episode.get('title', ''))
     description = escape_xml(episode.get('description', ''))
     audio_url = episode.get('audioUrl', '')
-    audio_size = episode.get('audioFileSize', 0)
+    audio_size_raw = episode.get('audioFileSize', 0)
     duration_seconds = episode.get('audioDuration', 0)
+
+    # Convert audio size to bytes (integer) for RSS enclosure length
+    # MongoDB stores as MB (float) or bytes (int) - normalize to bytes
+    if audio_size_raw and audio_size_raw < 10000:
+        # Value is in MB (e.g., 24.68), convert to bytes
+        audio_size = int(audio_size_raw * 1024 * 1024)
+    else:
+        # Value is already in bytes
+        audio_size = int(audio_size_raw) if audio_size_raw else 0
     speaker = escape_xml(episode.get('speaker', ''))
     pub_date = episode.get('pubDate')
     artwork_url = episode.get('artworkUrl', '')
