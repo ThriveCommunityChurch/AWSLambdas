@@ -114,19 +114,15 @@ def get_message_metadata(db, message_id: str) -> Optional[Dict[str, Any]]:
 def download_audio_from_s3(audio_url: str) -> Optional[str]:
     """Download audio file from S3 to /tmp directory."""
     try:
-        # Parse S3 URL
-        if audio_url.startswith('s3://'):
-            parts = audio_url[5:].split('/', 1)
-            bucket = parts[0]
-            key = parts[1] if len(parts) > 1 else ''
-        elif 's3.amazonaws.com' in audio_url:
-            from urllib.parse import urlparse
-            parsed = urlparse(audio_url)
-            bucket = parsed.netloc.split('.')[0]
-            key = parsed.path.lstrip('/')
-        else:
-            print(f"Unsupported audio URL format: {audio_url}")
-            return None
+        from urllib.parse import urlparse
+
+        # Parse S3 URL format: https://bucket.s3.us-east-2.amazonaws.com/key
+        # Example: https://thrive-audio.s3.us-east-2.amazonaws.com/2025/2025-11-30-Recording.mp3
+        parsed = urlparse(audio_url)
+        bucket = parsed.netloc.split('.')[0]  # thrive-audio
+        key = parsed.path.lstrip('/')  # 2025/2025-11-30-Recording.mp3
+
+        print(f"Parsed S3 URL - Bucket: {bucket}, Key: {key}")
 
         # Download to temp file
         tmp_path = tempfile.mktemp(suffix='.mp3', dir='/tmp')
