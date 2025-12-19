@@ -346,10 +346,16 @@ def upsert_episode(db, episode_data: dict) -> dict:
         updated_feed = re.sub(guid_pattern, new_item.strip(), current_feed, flags=re.DOTALL)
         print(f"Replaced existing item with GUID {guid}")
     else:
-        # Append new item after opening channel items (before first </item> or </channel>)
-        # Insert after lastBuildDate
-        insert_pattern = r'(</lastBuildDate>)'
-        updated_feed = re.sub(insert_pattern, r'\1\n' + new_item, current_feed, count=1)
+        # Insert new item at the TOP of the items list (newest first)
+        # Items come after all channel metadata - look for first <item> or </channel>
+        if '<item>' in current_feed:
+            # Insert before the first existing item
+            insert_pattern = r'(<item>)'
+            updated_feed = re.sub(insert_pattern, new_item + r'\n\t\t\1', current_feed, count=1)
+        else:
+            # No existing items - insert before </channel>
+            insert_pattern = r'(</channel>)'
+            updated_feed = re.sub(insert_pattern, new_item + r'\n\1', current_feed, count=1)
         print(f"Appended new item with GUID {guid}")
 
     # Update lastBuildDate
