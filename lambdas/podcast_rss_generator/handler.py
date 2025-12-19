@@ -73,7 +73,8 @@ def get_mongodb_uri() -> str:
 
 def get_openai_api_key() -> str:
     """Get OpenAI API key from Secrets Manager."""
-    return get_secret(os.environ['OPENAI_SECRET_ARN'])
+    secret_key = os.environ.get('OPENAI_SECRET_KEY')
+    return get_secret(os.environ['OPENAI_SECRET_ARN'], secret_key)
 
 
 # =============================================================================
@@ -145,44 +146,71 @@ def escape_xml(text: str) -> str:
 
 
 def generate_podcast_description(transcript: str, title: str, speaker: str, passage_ref: str = "") -> str:
-    """Generate a podcast-friendly description using GPT-4o mini."""
+    """
+    Generate a podcast-friendly description using GPT-4o mini.
+
+    This description is optimized for podcast apps (Apple Podcasts, Spotify, etc.) where
+    listeners may be discovering the church for the first time. The tone is welcoming and
+    accessible to seekers, newcomers, and those exploring faith - not just existing members.
+    """
     if not transcript:
         # Fallback description if no transcript
         return f"Join {speaker} as they share a powerful message titled '{title}'."
 
-    # Use first ~6000 chars of transcript (within token limits)
-    transcript_excerpt = transcript[:6000]
+    # System prompt tailored for podcast audience - broader, more accessible
+    system_prompt = (
+        "You are an expert at writing podcast episode descriptions for a church sermon podcast. "
+        "Your audience is diverse: some are regular church members, but many are people discovering "
+        "this podcast for the first time through Apple Podcasts, Spotify, or other platforms. "
+        "They may be spiritual seekers, people exploring Christianity, or those looking for meaningful "
+        "content during difficult seasons of life.\n\n"
+        "Requirements:\n"
+        "- Write 2-3 short paragraphs (total 100-150 words)\n"
+        "- Be warm, welcoming, and accessible to people of all backgrounds\n"
+        "- Avoid insider church language or theological jargon that might alienate newcomers\n"
+        "- Focus on the universal human themes and practical wisdom in the message\n"
+        "- Make it clear what value the listener will get from this episode\n"
+        "- DO NOT start with 'In this episode', 'Join us', 'This week', or similar clichés\n"
+        "- DO NOT mention the church name or assume the listener knows anything about the church\n"
+        "- DO NOT cite specific Bible verses in the description (the content speaks for itself)\n"
+        "- Vary your opening approach—use engaging hooks that draw curiosity\n"
+        "- Avoid repetitive phrases like 'you'll discover', 'you'll learn', 'this message explores'\n\n"
+        "Guidelines:\n"
+        "- Lead with the human struggle, question, or situation the sermon addresses\n"
+        "- Speak to universal experiences: relationships, purpose, fear, hope, doubt, joy, pain\n"
+        "- Use language that resonates with someone who might not attend any church\n"
+        "- Be genuine and relatable, not preachy or salesy\n"
+        "- End with something that creates anticipation without being clickbait\n"
+        "- The tone should feel like a thoughtful friend recommending something meaningful\n"
+        "- Write for someone scrolling through podcasts looking for something real and relevant"
+    )
 
-    prompt = f"""You are writing a podcast episode description for a church sermon.
-Create an engaging 2-3 paragraph description that:
-- Summarizes the main themes and takeaways
-- Is warm and inviting
-- Encourages listeners to tune in
-- Does NOT start with "In this episode" or similar clichés
-
-Title: {title}
-Speaker: {speaker}
-Scripture Reference: {passage_ref or 'N/A'}
-
-Transcript excerpt:
-{transcript_excerpt}
-
-Write the description in a warm, welcoming tone. Do not include the title or speaker name at the start."""
+    user_prompt = (
+        f"Write a podcast episode description for this sermon.\n\n"
+        f"Title: {title}\n"
+        f"Speaker: {speaker}\n\n"
+        f"Transcript:\n{transcript}"
+    )
 
     try:
         from openai import OpenAI
         client = OpenAI(api_key=get_openai_api_key())
 
+        print("Generating podcast description with GPT-4o-mini...")
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "You are a helpful assistant writing podcast descriptions."},
-                {"role": "user", "content": prompt}
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
             ],
-            max_tokens=500,
-            temperature=0.7
+            max_completion_tokens=500,
+            temperature=0.5  # Balanced: creative but consistent
         )
-        return response.choices[0].message.content.strip()
+
+        description = response.choices[0].message.content.strip()
+        print(f"Podcast description generated: {len(description.split())} words")
+        return description
+
     except Exception as e:
         print(f"Error generating description: {e}")
         return f"Join {speaker} as they share a powerful message titled '{title}'."
