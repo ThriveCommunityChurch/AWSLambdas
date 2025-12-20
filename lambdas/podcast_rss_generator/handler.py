@@ -125,6 +125,9 @@ def get_mongodb_client():
 
 def format_duration(seconds: float) -> str:
     """Convert seconds to HH:MM:SS format for iTunes."""
+    # Handle None or invalid values
+    if seconds is None:
+        return "00:00:00"
     # Convert to int to handle float durations from MongoDB
     total_seconds = int(seconds)
     hours = total_seconds // 3600
@@ -223,9 +226,9 @@ def build_item_xml(episode: dict) -> str:
     """Build an RSS <item> element from episode data."""
     title = escape_xml(episode.get('title', ''))
     description = escape_xml(episode.get('description', ''))
-    audio_url = episode.get('audioUrl', '')
-    audio_size_raw = episode.get('audioFileSize', 0)
-    duration_seconds = episode.get('audioDuration', 0)
+    audio_url = episode.get('audioUrl') or ''
+    audio_size_raw = episode.get('audioFileSize') or 0
+    duration_seconds = episode.get('audioDuration') or 0
 
     # Convert audio size to bytes (integer) for RSS enclosure length
     # MongoDB stores as MB (float) or bytes (int) - normalize to bytes
@@ -309,11 +312,18 @@ def upload_feed(xml_content: str):
 def upsert_episode(db, episode_data: dict) -> dict:
     """
     Add or update a single episode in the RSS feed.
-    1. Generate description if transcript provided but no description
-    2. Upsert to PodcastEpisodes collection
-    3. Update RSS XML (find by GUID, replace or append)
+    1. Validate episode has audio (skip if not playable)
+    2. Generate description if transcript provided but no description
+    3. Upsert to PodcastEpisodes collection
+    4. Update RSS XML (find by GUID, replace or append)
     """
     message_id = episode_data.get('messageId')
+    audio_url = episode_data.get('audioUrl')
+
+    # Early validation: Skip episodes without audio - they can't be played
+    if not audio_url:
+        print(f"Skipping episode {message_id} - no audio URL")
+        return {'action': 'upsert', 'messageId': message_id, 'status': 'skipped', 'reason': 'no_audio'}
 
     # Generate description if we have transcript but no description
     if episode_data.get('transcript') and not episode_data.get('description'):
@@ -394,9 +404,12 @@ def rebuild_feed(db) -> dict:
     Used for initial migration or recovery.
     """
     # Query all episodes, sorted by date descending (newest first)
-    episodes = list(db['PodcastEpisodes'].find().sort('pubDate', pymongo.DESCENDING))
+    # Only include episodes with valid audio URLs (skip entries without playable content)
+    episodes = list(db['PodcastEpisodes'].find({
+        'audioUrl': {'$exists': True, '$nin': [None, '']}
+    }).sort('pubDate', pymongo.DESCENDING))
 
-    print(f"Rebuilding feed with {len(episodes)} episodes")
+    print(f"Rebuilding feed with {len(episodes)} episodes (skipped entries without audio)")
 
     # Build header
     last_build = format_rfc2822_date(datetime.now(timezone.utc))
