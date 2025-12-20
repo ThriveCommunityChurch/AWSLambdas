@@ -111,6 +111,19 @@ def get_message_metadata(db, message_id: str) -> Optional[Dict[str, Any]]:
         return None
 
 
+def get_existing_transcript(db, message_id: str) -> Optional[str]:
+    """Fetch existing transcript from PodcastEpisodes collection."""
+    try:
+        episode = db['PodcastEpisodes'].find_one({'messageId': message_id})
+        if episode and episode.get('transcript'):
+            print(f"Found existing transcript for message {message_id}: {len(episode['transcript'])} chars")
+            return episode['transcript']
+        return None
+    except Exception as e:
+        print(f"Error fetching existing transcript: {e}")
+        return None
+
+
 def download_audio_from_s3(audio_url: str) -> Optional[str]:
     """Download audio file from S3 to /tmp directory."""
     try:
@@ -197,12 +210,14 @@ def lambda_handler(event, context):
 
     Event structure:
     {
-        "messageId": "abc123"
+        "messageId": "abc123",
+        "skipTranscription": false  // Optional: skip Whisper and reuse existing transcript
     }
 
     Or with pre-provided metadata (skips MongoDB lookup):
     {
         "messageId": "abc123",
+        "skipTranscription": false,
         "audioUrl": "https://thrive-audio.s3.amazonaws.com/2025/file.mp3",
         "title": "Sermon Title",
         "speaker": "Pastor Name",
@@ -214,6 +229,7 @@ def lambda_handler(event, context):
     }
     """
     message_id = event.get('messageId')
+    skip_transcription = event.get('skipTranscription', False)
 
     if not message_id:
         return {
@@ -225,6 +241,10 @@ def lambda_handler(event, context):
     tmp_audio_path = None
 
     try:
+        # Connect to MongoDB
+        client = get_mongodb_client()
+        db = client[DB_NAME]
+
         # Get message metadata (from event or MongoDB)
         if event.get('audioUrl'):
             # Use metadata from event
@@ -242,8 +262,6 @@ def lambda_handler(event, context):
             }
         else:
             # Fetch from MongoDB
-            client = get_mongodb_client()
-            db = client[DB_NAME]
             metadata = get_message_metadata(db, message_id)
 
             if not metadata:
@@ -259,18 +277,31 @@ def lambda_handler(event, context):
                 'body': f'No audio URL for message: {message_id}'
             }
 
-        # Step 1: Download audio from S3
-        print(f"Processing message: {message_id} - {metadata.get('title')}")
-        tmp_audio_path = download_audio_from_s3(audio_url)
+        print(f"Processing message: {message_id} - {metadata.get('title')} (skipTranscription={skip_transcription})")
 
-        if not tmp_audio_path:
-            return {
-                'statusCode': 500,
-                'body': 'Failed to download audio file'
-            }
+        # Get transcript - either from existing PodcastEpisode or by transcribing
+        transcript = None
 
-        # Step 2: Transcribe with Whisper
-        transcript = transcribe_audio(tmp_audio_path)
+        if skip_transcription:
+            # Try to reuse existing transcript from PodcastEpisodes
+            transcript = get_existing_transcript(db, message_id)
+            if transcript:
+                print(f"Reusing existing transcript ({len(transcript)} chars)")
+            else:
+                print("No existing transcript found, will transcribe")
+
+        if not transcript:
+            # Step 1: Download audio from S3
+            tmp_audio_path = download_audio_from_s3(audio_url)
+
+            if not tmp_audio_path:
+                return {
+                    'statusCode': 500,
+                    'body': 'Failed to download audio file'
+                }
+
+            # Step 2: Transcribe with Whisper
+            transcript = transcribe_audio(tmp_audio_path)
 
         if not transcript:
             return {
@@ -316,6 +347,7 @@ def lambda_handler(event, context):
             'body': {
                 'messageId': message_id,
                 'transcriptLength': len(transcript),
+                'transcriptionSkipped': skip_transcription and tmp_audio_path is None,
                 'sermonLambdaInvoked': True,
                 'podcastLambdaInvoked': True,
                 'status': 'success'
