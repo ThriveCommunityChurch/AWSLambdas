@@ -324,6 +324,9 @@ def upsert_episode(db, episode_data: dict) -> dict:
             passage_ref=episode_data.get('passageRef', '')
         )
 
+    # Remove transcript before saving - it's huge and only needed for description generation
+    episode_data.pop('transcript', None)
+
     # Add createdAt if new
     if 'createdAt' not in episode_data:
         episode_data['createdAt'] = datetime.now(timezone.utc)
