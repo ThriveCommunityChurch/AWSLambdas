@@ -241,7 +241,9 @@ def build_item_xml(episode: dict) -> str:
         audio_size = int(audio_size_raw) if audio_size_raw else 0
     speaker = escape_xml(episode.get('speaker', ''))
     pub_date = episode.get('pubDate')
-    artwork_url = episode.get('artworkUrl', '')
+    # Default episode artwork - same as legacy Anchor.fm feed
+    default_artwork = 'https://d3t3ozftmdmh3i.cloudfront.net/staging/podcast_uploaded_episode/45021512/91d19d6fa1414965.png'
+    artwork_url = episode.get('artworkUrl') or default_artwork
     guid = episode.get('guid', episode.get('messageId', ''))
 
     # Format pubDate
@@ -266,13 +268,8 @@ def build_item_xml(episode: dict) -> str:
         <pubDate>{pub_date_str}</pubDate>
         <itunes:author>{speaker}</itunes:author>
         <itunes:duration>{duration_str}</itunes:duration>
-        <itunes:explicit>false</itunes:explicit>"""
-
-    if artwork_url:
-        item += f"""
-        <itunes:image href="{artwork_url}"/>"""
-
-    item += """
+        <itunes:explicit>false</itunes:explicit>
+        <itunes:image href="{artwork_url}"/>
     </item>"""
 
     return item
