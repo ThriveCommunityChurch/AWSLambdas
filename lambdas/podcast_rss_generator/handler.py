@@ -102,7 +102,7 @@ CHANNEL_HEADER = """<?xml version="1.0" encoding="UTF-8"?>
         <itunes:category text="Christianity"/>
     </itunes:category>
     <itunes:explicit>false</itunes:explicit>
-    <atom:link href="https://podcast.thrive-fl.org/feed/rss.xml" rel="self" type="application/rss+xml"/>
+    <atom:link href="https://thrive-audio.s3.us-east-2.amazonaws.com/feed/rss.xml" rel="self" type="application/rss+xml"/>
     <lastBuildDate>{last_build_date}</lastBuildDate>
 """
 
