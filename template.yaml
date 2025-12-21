@@ -75,8 +75,8 @@ Resources:
       Description: Generates sermon summary, tags, waveform and updates SermonMessages
       Handler: handler.lambda_handler
       CodeUri: lambdas/sermon_processor/
-      Timeout: 120
-      MemorySize: 512  # More memory for waveform processing
+      Timeout: 180  # Increased for waveform generation
+      MemorySize: 1024  # FFmpeg waveform generation needs more memory
       Role: arn:aws:iam::349570132161:role/podcast-lambda-execution-role
       # FFmpeg binary is bundled with the Lambda (downloaded during CI build)
       # Binary is at /var/task/bin/ffmpeg in the Lambda execution environment
