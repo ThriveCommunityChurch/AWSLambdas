@@ -44,6 +44,6 @@ jobs:
             --s3-bucket thrive-sam-deployments \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
-            --capabilities CAPABILITY_IAM \
+            --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
             --parameter-overrides Environment=prod
 
