@@ -154,13 +154,78 @@ def download_audio_from_s3(audio_url: str) -> Optional[str]:
         return None
 
 
+def compress_audio_for_whisper(audio_path: str) -> Optional[str]:
+    """
+    Compress audio to under 25MB for Whisper API if needed.
+    Uses 32kbps mono MP3 - plenty for speech recognition.
+    """
+    import subprocess
+
+    # Whisper API limit is 25MB (26,214,400 bytes)
+    WHISPER_MAX_SIZE = 25 * 1024 * 1024
+
+    file_size = os.path.getsize(audio_path)
+    print(f"Original audio file size: {file_size / (1024*1024):.2f} MB")
+
+    if file_size <= WHISPER_MAX_SIZE:
+        print("File is under 25MB, no compression needed")
+        return audio_path
+
+    # Compress using FFmpeg: 32kbps mono MP3 (great for speech)
+    compressed_path = tempfile.mktemp(suffix='_compressed.mp3', dir='/tmp')
+    ffmpeg_path = '/var/task/bin/ffmpeg'
+
+    cmd = [
+        ffmpeg_path,
+        '-i', audio_path,
+        '-ac', '1',           # Mono
+        '-ab', '32k',         # 32kbps bitrate
+        '-ar', '16000',       # 16kHz sample rate (Whisper's native rate)
+        '-y',                 # Overwrite output
+        '-loglevel', 'error',
+        compressed_path
+    ]
+
+    print(f"Compressing audio: {' '.join(cmd)}")
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        if result.returncode != 0:
+            print(f"FFmpeg error: {result.stderr}")
+            return None
+
+        compressed_size = os.path.getsize(compressed_path)
+        print(f"Compressed audio size: {compressed_size / (1024*1024):.2f} MB "
+              f"(reduced by {(1 - compressed_size/file_size)*100:.1f}%)")
+
+        return compressed_path
+
+    except subprocess.TimeoutExpired:
+        print("FFmpeg compression timed out")
+        return None
+    except Exception as e:
+        print(f"Error compressing audio: {e}")
+        return None
+
+
 def transcribe_audio(audio_path: str) -> Optional[str]:
     """Transcribe audio file using OpenAI Whisper API."""
+    compressed_path = None
     try:
         from openai import OpenAI
         client = OpenAI(api_key=get_openai_api_key())
 
-        with open(audio_path, 'rb') as audio_file:
+        # Compress if over 25MB
+        transcribe_path = compress_audio_for_whisper(audio_path)
+        if not transcribe_path:
+            print("Failed to compress audio for Whisper")
+            return None
+
+        # Track if we created a compressed file (for cleanup)
+        if transcribe_path != audio_path:
+            compressed_path = transcribe_path
+
+        with open(transcribe_path, 'rb') as audio_file:
             print("Starting Whisper transcription...")
             response = client.audio.transcriptions.create(
                 model="whisper-1",
@@ -174,6 +239,10 @@ def transcribe_audio(audio_path: str) -> Optional[str]:
     except Exception as e:
         print(f"Error transcribing audio: {e}")
         return None
+    finally:
+        # Clean up compressed file if we created one
+        if compressed_path and os.path.exists(compressed_path):
+            os.unlink(compressed_path)
 
 
 def invoke_sermon_lambda(payload: Dict[str, Any]) -> bool:

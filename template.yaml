@@ -50,6 +50,8 @@ Resources:
       Timeout: 900  # 15 minutes max for long audio transcription
       MemorySize: 512  # More memory for audio download
       Role: arn:aws:iam::349570132161:role/podcast-lambda-execution-role
+      # FFmpeg binary is bundled with the Lambda (downloaded during CI build)
+      # Used to compress audio >25MB before sending to Whisper API (32kbps mono)
       Environment:
         Variables:
           S3_BUCKET: thrive-audio
