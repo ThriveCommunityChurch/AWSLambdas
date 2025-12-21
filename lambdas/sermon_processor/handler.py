@@ -486,9 +486,9 @@ def generate_waveform_from_s3(audio_url: str, num_points: int = 480) -> Optional
         # -f s16le: 16-bit signed little-endian
         # -ac 1: mono (single channel)
         # -ar 22050: 22.05kHz sample rate
-        # Note: FFmpeg binary is at /opt/bin/ffmpeg when using Lambda Layer
+        # Note: FFmpeg binary is bundled at /var/task/bin/ffmpeg in Lambda
         cmd = [
-            '/opt/bin/ffmpeg',
+            '/var/task/bin/ffmpeg',
             '-i', tmp_path,
             '-f', 's16le',
             '-ac', '1',
