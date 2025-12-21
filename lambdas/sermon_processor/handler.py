@@ -95,7 +95,7 @@ FINANCIAL = [
 # Theological Foundations
 THEOLOGICAL = [
     "NatureOfGod", "Trinity", "Salvation", "Resurrection", "HolySpirit",
-    "Church", "EndTimes", "SinAndRepentance", "Sanctification", "Covenant",
+    "Church", "EndTimes", "SinAndRepentance", "Faith", "Sanctification", "Covenant",
     "Apologetics"
 ]
 
@@ -193,6 +193,65 @@ VALID_TAGS = (
     GENDER +
     OTHER
 )
+
+# =============================================================================
+# TAG TO INTEGER MAPPING - Matches C# MessageTag enum values
+# The API uses C# enums which serialize to integers in MongoDB
+# =============================================================================
+TAG_TO_INT = {
+    # Relationships & Family (0-3)
+    "Marriage": 0, "Family": 1, "Friendship": 2, "Singleness": 3,
+    # Financial & Stewardship (4-5)
+    "FinancialStewardship": 4, "Generosity": 5,
+    # Theological Foundations (6-17) - Note: Faith=14 inserted after SinAndRepentance
+    "NatureOfGod": 6, "Trinity": 7, "Salvation": 8, "Resurrection": 9, "HolySpirit": 10,
+    "Church": 11, "EndTimes": 12, "SinAndRepentance": 13, "Faith": 14, "Sanctification": 15,
+    "Covenant": 16, "Apologetics": 17,
+    # Spiritual Disciplines (18-24)
+    "Prayer": 18, "Fasting": 19, "Worship": 20, "BibleStudy": 21, "Meditation": 22,
+    "Service": 23, "Praise": 24,
+    # Sacraments & Ordinances (25-26)
+    "Baptism": 25, "Communion": 26,
+    # Life Stages & Transitions (27-30)
+    "Youth": 27, "Aging": 28, "GriefAndLoss": 29, "LifeTransitions": 30,
+    # Social Issues & Justice (31-35)
+    "SocialJustice": 31, "RacialReconciliation": 32, "Poverty": 33, "Creation": 34, "Politics": 35,
+    # Personal Growth & Character (36-54)
+    "Identity": 36, "Purpose": 37, "Courage": 38, "Hope": 39, "Love": 40, "Joy": 41, "Peace": 42,
+    "Patience": 43, "Humility": 44, "Wisdom": 45, "Integrity": 46, "Forgiveness": 47, "Gratitude": 48,
+    "Trust": 49, "Obedience": 50, "Contentment": 51, "Pride": 52, "Fear": 53, "Anger": 54,
+    # Challenges & Struggles (55-62)
+    "Suffering": 55, "Doubt": 56, "Anxiety": 57, "Depression": 58, "Addiction": 59, "Temptation": 60,
+    "SpiritualWarfare": 61, "Persecution": 62,
+    # Eternal & Supernatural (63-64)
+    "Heaven": 63, "Hell": 64,
+    # Mission & Evangelism (65-69)
+    "Evangelism": 65, "Missions": 66, "Discipleship": 67, "Leadership": 68, "Witnessing": 69,
+    # Biblical Studies (70-74)
+    "Parables": 70, "SermonOnTheMount": 71, "FruitOfTheSpirit": 72, "ArmorOfGod": 73, "Prophets": 74,
+    # Biblical Book Studies (75-85)
+    "Genesis": 75, "Exodus": 76, "Psalms": 77, "Proverbs": 78, "Gospels": 79, "Acts": 80,
+    "Romans": 81, "PaulineEpistles": 82, "Revelation": 83, "OldTestament": 84, "NewTestament": 85,
+    # Seasonal & Liturgical (86-90)
+    "Advent": 86, "Christmas": 87, "Lent": 88, "Easter": 89, "Pentecost": 90,
+    # Work & Vocation (91-92)
+    "Work": 91, "Rest": 92,
+    # Gender & Relationships (93-95)
+    "BiblicalManhood": 93, "BiblicalWomanhood": 94, "SexualPurity": 95,
+    # Other (96-101)
+    "Miracles": 96, "Prophecy": 97, "Healing": 98, "Community": 99, "Culture": 100, "Technology": 101,
+}
+
+
+def convert_tags_to_ints(tags: List[str]) -> List[int]:
+    """Convert string tag names to their integer enum values for MongoDB storage."""
+    int_tags = []
+    for tag in tags:
+        if tag in TAG_TO_INT:
+            int_tags.append(TAG_TO_INT[tag])
+        else:
+            print(f"Warning: Unknown tag '{tag}' - skipping")
+    return int_tags
 
 
 def generate_sermon_summary(transcript: str, title: str, passage_ref: str = "") -> str:
@@ -501,9 +560,13 @@ def update_sermon_message(db, message_id: str, summary: str, tags: List[str],
     try:
         collection = db[COLLECTION_NAME]
 
+        # Convert string tags to integer enum values for MongoDB storage
+        # The API uses C# enums which serialize to integers
+        int_tags = convert_tags_to_ints(tags)
+
         update_doc = {
             'Summary': summary,
-            'Tags': tags,
+            'Tags': int_tags,
             'LastUpdated': datetime.now(timezone.utc)
         }
 
@@ -519,7 +582,7 @@ def update_sermon_message(db, message_id: str, summary: str, tags: List[str],
             print(f"No document found with _id: {message_id}")
             return False
 
-        print(f"Updated SermonMessage {message_id}: summary={len(summary)} chars, tags={tags}")
+        print(f"Updated SermonMessage {message_id}: summary={len(summary)} chars, tags={tags} -> {int_tags}")
         return True
 
     except Exception as e:
