@@ -37,19 +37,6 @@ Globals:
 Resources:
 
   # ---------------------------------------------------------------------------
-  # FFmpeg Lambda Layer (deployed from AWS Serverless Application Repository)
-  # Source: https://github.com/serverlesspub/ffmpeg-aws-lambda-layer
-  # This deploys the FFmpeg layer to YOUR account in YOUR region (us-east-2)
-  # After deployment, ffmpeg/ffprobe binaries are available at /opt/bin/
-  # ---------------------------------------------------------------------------
-  FFmpegLayer:
-    Type: AWS::Serverless::Application
-    Properties:
-      Location:
-        ApplicationId: arn:aws:serverlessrepo:us-east-1:145266761615:applications/ffmpeg-lambda-layer
-        SemanticVersion: 1.0.0
-
-  # ---------------------------------------------------------------------------
   # Lambda 1: Transcription Processor (Entry Point)
   # Downloads audio, transcribes with Whisper, invokes Sermon + Podcast Lambdas
   # ---------------------------------------------------------------------------
@@ -89,11 +76,8 @@ Resources:
       Timeout: 120
       MemorySize: 512  # More memory for waveform processing
       Role: arn:aws:iam::349570132161:role/podcast-lambda-execution-role
-      # FFmpeg layer for waveform generation (decodes MP3 to raw PCM)
-      # Deployed from AWS Serverless Application Repository to this account/region
-      # After linking, ffmpeg binary is available at /opt/bin/ffmpeg
-      Layers:
-        - !GetAtt FFmpegLayer.Outputs.LayerVersion
+      # FFmpeg binary is bundled with the Lambda (downloaded during CI build)
+      # Binary is at /var/task/bin/ffmpeg in the Lambda execution environment
       Environment:
         Variables:
           S3_BUCKET: thrive-audio
