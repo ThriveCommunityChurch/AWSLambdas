@@ -485,14 +485,14 @@ def generate_waveform_from_s3(audio_url: str, num_points: int = 480) -> Optional
         # Use FFmpeg to decode audio to raw 16-bit signed PCM
         # -f s16le: 16-bit signed little-endian
         # -ac 1: mono (single channel)
-        # -ar 22050: 22.05kHz sample rate
+        # -ar 8000: 8kHz sample rate (low rate is fine for waveform visualization)
         # Note: FFmpeg binary is bundled at /var/task/bin/ffmpeg in Lambda
         cmd = [
             '/var/task/bin/ffmpeg',
             '-i', tmp_path,
             '-f', 's16le',
             '-ac', '1',
-            '-ar', '22050',
+            '-ar', '8000',  # Low sample rate saves memory - waveform viz doesn't need high fidelity
             '-loglevel', 'error',
             '-'
         ]
@@ -506,29 +506,30 @@ def generate_waveform_from_s3(audio_url: str, num_points: int = 480) -> Optional
         raw_audio = result.stdout
         print(f"Decoded {len(raw_audio):,} bytes of raw PCM audio")
 
-        # Convert bytes to 16-bit signed integer samples
+        # Process in chunks directly from bytes to avoid loading all samples into memory
+        # Each sample is 2 bytes (16-bit signed)
         num_samples = len(raw_audio) // 2
-        samples = struct.unpack(f'<{num_samples}h', raw_audio)
-
-        # Calculate RMS per chunk
-        chunk_size = len(samples) // num_points
+        chunk_size = num_samples // num_points
         if chunk_size < 1:
             chunk_size = 1
 
         waveform = []
         for i in range(num_points):
-            start = i * chunk_size
-            end = min(start + chunk_size, len(samples))
-            chunk = samples[start:end]
+            start_byte = i * chunk_size * 2
+            end_byte = min(start_byte + chunk_size * 2, len(raw_audio))
+            chunk_bytes = raw_audio[start_byte:end_byte]
 
-            if not chunk:
+            if len(chunk_bytes) < 2:
                 waveform.append(0.0)
                 continue
 
+            # Unpack only this chunk's samples (not entire file)
+            chunk_samples = struct.unpack(f'<{len(chunk_bytes)//2}h', chunk_bytes)
+
             # RMS = sqrt(mean(samples^2)) / max_amplitude
             # 32768 is max value for 16-bit signed int
-            sum_squares = sum(s * s for s in chunk)
-            rms = math.sqrt(sum_squares / len(chunk)) / 32768.0
+            sum_squares = sum(s * s for s in chunk_samples)
+            rms = math.sqrt(sum_squares / len(chunk_samples)) / 32768.0
             waveform.append(rms)
 
         # Normalize to 0.15-1.0 range (matches existing waveform format)
