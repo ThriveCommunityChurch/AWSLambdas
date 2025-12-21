@@ -3,13 +3,17 @@ Sermon Processor Lambda
 
 Receives transcript and messageId, then:
 1. Generates sermon summary (GPT-4o mini)
-2. Generates waveform data (librosa RMS) - if audio URL provided
+2. Generates waveform data (FFmpeg + pure Python RMS) - if audio URL provided
 3. Generates tags (GPT-4o mini)
 4. Updates SermonMessages collection in MongoDB
 
 Environment Variables:
 - MONGODB_SECRET_ARN: Secrets Manager ARN for MongoDB URI
 - OPENAI_SECRET_ARN: Secrets Manager ARN for OpenAI API key
+
+Note: Waveform generation requires FFmpeg Lambda Layer. Uses pure Python RMS
+calculation to avoid heavy ML dependencies (librosa, numpy, scipy) that would
+exceed Lambda's deployment size limits.
 """
 
 import boto3
@@ -377,28 +381,33 @@ def generate_tags(summary_text: str, transcript: str, title: str) -> List[str]:
 
 def generate_waveform_from_s3(audio_url: str, num_points: int = 480) -> Optional[List[float]]:
     """
-    Download audio from S3 and generate waveform data using librosa.
-    Returns list of normalized RMS values (0-1).
+    Download audio from S3 and generate waveform data using FFmpeg + pure Python RMS.
+    Returns list of normalized RMS values (0.15-1.0 range).
+
+    This approach avoids heavy ML dependencies (librosa, numpy, scipy) that exceed
+    Lambda's deployment size limits. FFmpeg is provided via Lambda Layer.
     """
     if not audio_url:
         return None
 
+    tmp_path = None
     try:
         import tempfile
-        import librosa
-        import numpy as np
+        import subprocess
+        import struct
+        import math
 
         s3 = boto3.client('s3')
 
         # Parse S3 URL to get bucket and key
-        # Format: https://thrive-audio.s3.amazonaws.com/2025/file.mp3
+        # Format: https://thrive-audio.s3.us-east-2.amazonaws.com/2025/file.mp3
         # or s3://thrive-audio/2025/file.mp3
         if audio_url.startswith('s3://'):
             parts = audio_url[5:].split('/', 1)
             bucket = parts[0]
             key = parts[1] if len(parts) > 1 else ''
-        elif 's3.amazonaws.com' in audio_url:
-            # https://bucket.s3.amazonaws.com/key
+        elif 's3.' in audio_url and 'amazonaws.com' in audio_url:
+            # https://bucket.s3.region.amazonaws.com/key
             from urllib.parse import urlparse
             parsed = urlparse(audio_url)
             bucket = parsed.netloc.split('.')[0]
@@ -412,37 +421,78 @@ def generate_waveform_from_s3(audio_url: str, num_points: int = 480) -> Optional
             s3.download_fileobj(bucket, key, tmp)
             tmp_path = tmp.name
 
-        # Load audio and compute RMS
-        y, sr = librosa.load(tmp_path, sr=22050, mono=True)
+        print(f"Downloaded audio to {tmp_path}, generating waveform...")
 
-        # Calculate frame length to get desired number of points
-        hop_length = len(y) // num_points
-        if hop_length < 1:
-            hop_length = 1
+        # Use FFmpeg to decode audio to raw 16-bit signed PCM
+        # -f s16le: 16-bit signed little-endian
+        # -ac 1: mono (single channel)
+        # -ar 22050: 22.05kHz sample rate
+        # Note: FFmpeg binary is at /opt/bin/ffmpeg when using Lambda Layer
+        cmd = [
+            '/opt/bin/ffmpeg',
+            '-i', tmp_path,
+            '-f', 's16le',
+            '-ac', '1',
+            '-ar', '22050',
+            '-loglevel', 'error',
+            '-'
+        ]
 
-        # Compute RMS energy
-        rms = librosa.feature.rms(y=y, hop_length=hop_length)[0]
+        result = subprocess.run(cmd, capture_output=True)
 
-        # Normalize to 0-1 range
-        if rms.max() > 0:
-            rms = rms / rms.max()
+        if result.returncode != 0:
+            print(f"FFmpeg error: {result.stderr.decode()}")
+            return None
 
-        # Resample to exact number of points if needed
-        if len(rms) != num_points:
-            rms = np.interp(
-                np.linspace(0, len(rms) - 1, num_points),
-                np.arange(len(rms)),
-                rms
-            )
+        raw_audio = result.stdout
+        print(f"Decoded {len(raw_audio):,} bytes of raw PCM audio")
 
-        # Clean up temp file
-        os.unlink(tmp_path)
+        # Convert bytes to 16-bit signed integer samples
+        num_samples = len(raw_audio) // 2
+        samples = struct.unpack(f'<{num_samples}h', raw_audio)
 
-        return rms.tolist()
+        # Calculate RMS per chunk
+        chunk_size = len(samples) // num_points
+        if chunk_size < 1:
+            chunk_size = 1
+
+        waveform = []
+        for i in range(num_points):
+            start = i * chunk_size
+            end = min(start + chunk_size, len(samples))
+            chunk = samples[start:end]
+
+            if not chunk:
+                waveform.append(0.0)
+                continue
+
+            # RMS = sqrt(mean(samples^2)) / max_amplitude
+            # 32768 is max value for 16-bit signed int
+            sum_squares = sum(s * s for s in chunk)
+            rms = math.sqrt(sum_squares / len(chunk)) / 32768.0
+            waveform.append(rms)
+
+        # Normalize to 0.15-1.0 range (matches existing waveform format)
+        min_val = min(waveform)
+        max_val = max(waveform)
+
+        if max_val - min_val < 0.0001:
+            print("Audio appears uniform/silent, returning mid-level waveform")
+            return [0.7] * num_points
+
+        # Scale: 0.15 + (value - min) / (max - min) * 0.85
+        normalized = [round(0.15 + (v - min_val) / (max_val - min_val) * 0.85, 3) for v in waveform]
+
+        print(f"Generated {len(normalized)} waveform points")
+        return normalized
 
     except Exception as e:
         print(f"Error generating waveform: {e}")
         return None
+    finally:
+        # Clean up temp file
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
 
 def update_sermon_message(db, message_id: str, summary: str, tags: List[str],

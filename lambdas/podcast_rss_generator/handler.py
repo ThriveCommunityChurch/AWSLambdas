@@ -224,7 +224,8 @@ def generate_podcast_description(transcript: str, title: str, speaker: str, pass
 
 def build_item_xml(episode: dict) -> str:
     """Build an RSS <item> element from episode data."""
-    title = escape_xml(episode.get('title', ''))
+    # Use podcastTitle if available, otherwise fall back to title
+    title = escape_xml(episode.get('podcastTitle', '') or episode.get('title', ''))
     description = escape_xml(episode.get('description', ''))
     audio_url = episode.get('audioUrl') or ''
     audio_size_raw = episode.get('audioFileSize') or 0

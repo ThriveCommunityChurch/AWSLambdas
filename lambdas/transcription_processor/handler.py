@@ -90,13 +90,19 @@ def get_message_metadata(db, message_id: str) -> Optional[Dict[str, Any]]:
             print(f"Message not found: {message_id}")
             return None
 
-        # Get series info for artwork
-        series = db['SermonSeries'].find_one({'_id': ObjectId(message.get('SeriesId'))})
-        artwork_url = series.get('ArtUrl', '') if series else ''
+        # Get artwork URL - prefer message-level PodcastImageUrl, fall back to series ArtUrl
+        artwork_url = message.get('PodcastImageUrl', '')
+        if not artwork_url:
+            series = db['SermonSeries'].find_one({'_id': ObjectId(message.get('SeriesId'))})
+            artwork_url = series.get('ArtUrl', '') if series else ''
+
+        # Get podcast title - prefer PodcastTitle, fall back to Title
+        podcast_title = message.get('PodcastTitle', '') or message.get('Title', '')
 
         return {
             'messageId': message_id,
             'title': message.get('Title', ''),
+            'podcastTitle': podcast_title,
             'speaker': message.get('Speaker', ''),
             'passageRef': message.get('PassageRef', ''),
             'audioUrl': message.get('AudioUrl', ''),
@@ -247,10 +253,13 @@ def lambda_handler(event, context):
 
         # Get message metadata (from event or MongoDB)
         if event.get('audioUrl'):
-            # Use metadata from event
+            # Use metadata from event - podcastTitle falls back to title if not provided
+            title = event.get('title', '')
+            podcast_title = event.get('podcastTitle', '') or title
             metadata = {
                 'messageId': message_id,
-                'title': event.get('title', ''),
+                'title': title,
+                'podcastTitle': podcast_title,
                 'speaker': event.get('speaker', ''),
                 'passageRef': event.get('passageRef', ''),
                 'audioUrl': event.get('audioUrl'),
@@ -330,6 +339,7 @@ def lambda_handler(event, context):
             'episode': {
                 'messageId': message_id,
                 'title': metadata.get('title', ''),
+                'podcastTitle': metadata.get('podcastTitle', ''),
                 'audioUrl': audio_url,
                 'audioFileSize': metadata.get('audioFileSize', 0),
                 'audioDuration': metadata.get('audioDuration', 0),
