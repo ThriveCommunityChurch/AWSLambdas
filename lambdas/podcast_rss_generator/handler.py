@@ -97,7 +97,7 @@ CHANNEL_HEADER = """<?xml version="1.0" encoding="UTF-8"?>
         <itunes:name>Thrive Community Church</itunes:name>
         <itunes:email>info@thrive-fl.org</itunes:email>
     </itunes:owner>
-    <itunes:image href="https://thrive-fl.org/assets/podcast-artwork.jpg"/>
+    <itunes:image href="https://d2v6hk6f64og35.cloudfront.net/podcast_img.jpg"/>
     <itunes:category text="Religion &amp; Spirituality">
         <itunes:category text="Christianity"/>
     </itunes:category>
