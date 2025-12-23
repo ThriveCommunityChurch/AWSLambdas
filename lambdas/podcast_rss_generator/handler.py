@@ -150,6 +150,42 @@ def escape_xml(text: str) -> str:
     return escape(text)
 
 
+def ensure_datetime(value) -> Optional[datetime]:
+    """
+    Ensure a value is a proper datetime object for MongoDB storage.
+
+    MongoDB sorts datetime objects correctly, but string dates sort lexicographically,
+    which breaks chronological ordering (e.g., "2025-12-14" sorts after "2025-12-07"
+    as strings, but we need proper date comparison).
+
+    Args:
+        value: Can be datetime, string (ISO format), or None
+
+    Returns:
+        datetime object with UTC timezone, or None if invalid
+    """
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        # Already a datetime - ensure it has timezone info
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value
+
+    if isinstance(value, str):
+        try:
+            # Parse ISO format string (handles both with and without 'Z' suffix)
+            dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt
+        except (ValueError, TypeError):
+            pass
+
+    return None
+
+
 def generate_podcast_description(transcript: str, title: str, speaker: str, passage_ref: str = "") -> str:
     """
     Generate a podcast-friendly description using GPT-4o mini.
@@ -222,10 +258,43 @@ def generate_podcast_description(transcript: str, title: str, speaker: str, pass
 
 
 
+def build_podcast_title(episode: dict) -> str:
+    """
+    Build the podcast episode title.
+
+    Priority:
+    1. Use podcastTitle if explicitly set
+    2. Otherwise, build from: "Series Name – Week # | Message Title"
+    3. Fall back to just the message title if no series info
+
+    Format: "Series Name – Week # | Message Title"
+    Example: "The Big Relief – Week 3 | Finding Peace"
+    """
+    # If podcastTitle is explicitly set, use it
+    podcast_title = episode.get('podcastTitle', '')
+    if podcast_title:
+        return podcast_title
+
+    # Build title from series info + message title
+    message_title = episode.get('title', '')
+    series_name = episode.get('seriesName', '')
+    week_num = episode.get('weekNum')
+
+    if series_name and week_num is not None:
+        # Full format: "Series Name – Week # | Message Title"
+        return f"{series_name} – Week {week_num} | {message_title}"
+    elif series_name:
+        # No week number: "Series Name | Message Title"
+        return f"{series_name} | {message_title}"
+    else:
+        # No series info, just use message title
+        return message_title
+
+
 def build_item_xml(episode: dict) -> str:
     """Build an RSS <item> element from episode data."""
-    # Use podcastTitle if available, otherwise fall back to title
-    title = escape_xml(episode.get('podcastTitle', '') or episode.get('title', ''))
+    # Build title using the proper format
+    title = escape_xml(build_podcast_title(episode))
     description = escape_xml(episode.get('description', ''))
     audio_url = episode.get('audioUrl') or ''
     audio_size_raw = episode.get('audioFileSize') or 0
@@ -335,9 +404,19 @@ def upsert_episode(db, episode_data: dict) -> dict:
     # Remove transcript before saving - it's huge and only needed for description generation
     episode_data.pop('transcript', None)
 
-    # Add createdAt if new
+    # CRITICAL: Ensure pubDate is a proper datetime object, not a string!
+    # MongoDB sorts datetime objects chronologically, but sorts strings lexicographically.
+    # This breaks RSS feed ordering if pubDate is stored as a string.
+    if 'pubDate' in episode_data:
+        episode_data['pubDate'] = ensure_datetime(episode_data['pubDate'])
+        if episode_data['pubDate'] is None:
+            print(f"Warning: Could not parse pubDate for episode {message_id}")
+
+    # Add createdAt if new (also ensure it's a datetime)
     if 'createdAt' not in episode_data:
         episode_data['createdAt'] = datetime.now(timezone.utc)
+    else:
+        episode_data['createdAt'] = ensure_datetime(episode_data['createdAt']) or datetime.now(timezone.utc)
 
     # Upsert to MongoDB
     db['PodcastEpisodes'].update_one(
@@ -452,6 +531,9 @@ def lambda_handler(event, context):
     {
         "messageId": "abc123",
         "title": "Sermon Title",
+        "seriesName": "The Big Relief",  // Series name for title construction
+        "weekNum": 3,                     // Week number for title construction
+        "podcastTitle": null,             // Optional: explicit override for podcast title
         "audioUrl": "https://...",
         "audioFileSize": 38248061,
         "audioDuration": 2389,
@@ -462,6 +544,11 @@ def lambda_handler(event, context):
         "transcript": "Full transcript...",  // Optional, for description generation
         "description": "Pre-generated description"  // Optional, if already have one
     }
+
+    Title Construction Priority:
+    1. If podcastTitle is set, use it directly
+    2. Otherwise, build: "Series Name – Week # | Message Title"
+    3. Falls back to just "Message Title" if no series info
     """
     action = event.get('action', 'upsert')
 
