@@ -198,32 +198,38 @@ def generate_podcast_description(transcript: str, title: str, speaker: str, pass
         # Fallback description if no transcript
         return f"Join {speaker} as they share a powerful message titled '{title}'."
 
-    # System prompt tailored for podcast audience - broader, more accessible
+    # System prompt tailored for podcast audience - broader, more accessible, and non-repetitive
     system_prompt = (
         "You are an expert at writing podcast episode descriptions for a church sermon podcast. "
         "Your audience is diverse: some are regular church members, but many are people discovering "
         "this podcast for the first time through Apple Podcasts, Spotify, or other platforms. "
         "They may be spiritual seekers, people exploring Christianity, or those looking for meaningful "
         "content during difficult seasons of life.\n\n"
-        "Requirements:\n"
-        "- Write 2-3 short paragraphs (total 100-150 words)\n"
-        "- Be warm, welcoming, and accessible to people of all backgrounds\n"
-        "- Avoid insider church language or theological jargon that might alienate newcomers\n"
-        "- Focus on the universal human themes and practical wisdom in the message\n"
-        "- Make it clear what value the listener will get from this episode\n"
-        "- DO NOT start with 'In this episode', 'Join us', 'This week', or similar clichés\n"
-        "- DO NOT mention the church name or assume the listener knows anything about the church\n"
-        "- DO NOT cite specific Bible verses in the description (the content speaks for itself)\n"
-        "- Vary your opening approach—use engaging hooks that draw curiosity\n"
-        "- Avoid repetitive phrases like 'you'll discover', 'you'll learn', 'this message explores'\n\n"
-        "Guidelines:\n"
-        "- Lead with the human struggle, question, or situation the sermon addresses\n"
-        "- Speak to universal experiences: relationships, purpose, fear, hope, doubt, joy, pain\n"
-        "- Use language that resonates with someone who might not attend any church\n"
-        "- Be genuine and relatable, not preachy or salesy\n"
-        "- End with something that creates anticipation without being clickbait\n"
-        "- The tone should feel like a thoughtful friend recommending something meaningful\n"
-        "- Write for someone scrolling through podcasts looking for something real and relevant"
+        "Core requirements:\n"
+        "- Write exactly 2 short paragraphs, separated by a blank line, with a total of about 130-180 words.\n"
+        "- Be warm, welcoming, and accessible to people of all backgrounds, including those who do not attend church.\n"
+        "- Clearly explain what this episode is about and how it approaches its main idea so the listener knows what to expect.\n"
+        "- Avoid insider church language or heavy theological jargon that might alienate newcomers.\n"
+        "- Make it clear what value or kind of help the listener might receive from this episode.\n"
+        "- Do NOT start with phrases like 'In this episode', 'Join us', 'This week', or similar podcast clichés.\n"
+        "- Do NOT mention the church name or assume the listener knows anything about the church.\n"
+        "- Do NOT cite specific Bible verses in the description (the content should speak for itself).\n\n"
+        "Openings and style:\n"
+        "- Lead with the real-life tension, question, or situation the sermon addresses, in language an unchurched person would understand.\n"
+        "- Do NOT begin with overused patterns like: 'In a world...', 'Life often feels...', 'Imagine living...', 'Have you ever felt...', or 'Today, you'll discover...'.\n"
+        "- Avoid repetitive phrases such as ""you'll discover"", ""you'll learn"", or ""this message explores""—use more concrete, specific language instead.\n"
+        "- Use language that resonates with someone who might not attend any church, focusing on relationships, purpose, fear, hope, doubt, joy, pain, and other universal experiences.\n"
+        "- Be genuine and relatable, not preachy, salesy, or clickbait-y.\n"
+        "- The tone should feel like a thoughtful friend recommending something meaningful and honest.\n\n"
+        "Structure and closing:\n"
+        "- In the first paragraph, connect with the listener's world and name the core question, struggle, or promise at the heart of the message.\n"
+        "- In the second paragraph, briefly show how this sermon approaches that theme and what kind of shift, comfort, or challenge the listener might carry away.\n"
+        "- End with a line that creates anticipation or curiosity without using generic questions like 'How will you respond?' or 'What will you do with this?'.\n\n"
+        "Self-check before you answer:\n"
+        "- Re-read your description and remove any mention of 'in this episode', 'this message', 'this sermon', 'this week', or similar meta-language.\n"
+        "- Ensure you did not use banned openings such as 'In a world...', 'Life often feels...', 'Imagine...', 'Have you ever felt...', or 'Today, you'll discover...'.\n"
+        "- Replace any generic patterns like ""you'll discover"" or ""you'll learn"" with more concrete, episode-specific phrasing.\n"
+        "- Confirm the output is exactly 2 paragraphs separated by a single blank line, with no extra commentary before or after."
     )
 
     user_prompt = (
@@ -238,15 +244,15 @@ def generate_podcast_description(transcript: str, title: str, speaker: str, pass
         client = OpenAI(api_key=get_openai_api_key())
 
         print("Generating podcast description with GPT-4o-mini...")
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            max_completion_tokens=500,
-            temperature=0.5  # Balanced: creative but consistent
-        )
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                max_completion_tokens=500,
+                temperature=0.6  # Slightly higher for more engaging, varied language
+            )
 
         description = response.choices[0].message.content.strip()
         print(f"Podcast description generated: {len(description.split())} words")
