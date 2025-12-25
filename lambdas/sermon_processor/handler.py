@@ -316,15 +316,15 @@ def generate_sermon_summary(transcript: str, title: str, passage_ref: str = "") 
         client = OpenAI(api_key=get_openai_api_key())
 
         print("Generating sermon summary with GPT-4o-mini...")
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                max_completion_tokens=400,  # Increased for ~120 word paragraph
-                temperature=0.45
-            )
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            max_completion_tokens=400,  # Increased for ~120 word paragraph
+            temperature=0.45
+        )
 
         summary_text = response.choices[0].message.content.strip()
 

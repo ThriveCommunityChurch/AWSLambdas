@@ -244,15 +244,15 @@ def generate_podcast_description(transcript: str, title: str, speaker: str, pass
         client = OpenAI(api_key=get_openai_api_key())
 
         print("Generating podcast description with GPT-4o-mini...")
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                max_completion_tokens=500,
-                temperature=0.6  # Slightly higher for more engaging, varied language
-            )
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            max_completion_tokens=500,
+            temperature=0.6  # Slightly higher for more engaging, varied language
+        )
 
         description = response.choices[0].message.content.strip()
         print(f"Podcast description generated: {len(description.split())} words")
