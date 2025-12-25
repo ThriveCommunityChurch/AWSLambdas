@@ -262,39 +262,48 @@ def generate_sermon_summary(transcript: str, title: str, passage_ref: str = "") 
     if not transcript:
         return ""
 
-    # System prompt from LangGraph agent - focuses on what listeners will experience
+    # System prompt focuses on varied, listener-centered summaries and avoids overused patterns
     system_prompt = (
-        "You are an expert at summarizing sermons for church audiences. "
-        "Your task is to create a single-paragraph summary that captures what listeners will learn, "
-        "experience, and take away from the sermon—not just a retelling of its content in a summarization. Focus on the "
-        "insights, transformations, and practical wisdom available to those who engage with the message. "
-        "\n\n"
-        "Requirements:\n"
-        "- Write for listeners of the sermon—as if speaking directly to them. Your tone should be conversational, invitational, and spiritually engaging\n"
-        "- The summary must be a single paragraph (no line breaks within the summary)\n"
-        "- The summary should be no more than 120 words maximum. Less is better if you can effectively communicate the core message\n"
-        "- Use an opening question only if the sermon explicitly challenges behavior or worldview—otherwise, open with a statement that draws curiosity or empathy.\n"
-        "- Frame the summary around what listeners will discover, learn, or be challenged by—not just what the sermon is about\n"
-        "- Base your summary on what is explicitly or clearly implied in the transcription, without adding unstated ideas\n"
-        "- DO NOT mention the church name, organization name, or pastor's name\n"
-        "- DO NOT cite specific passage references directly (e.g., 'Matthew 2:1-12') unless the entire sermon is an exposition of a single passage\n"
-        "- Vary your opening approach—avoid using the same opening verb or structure repeatedly. Use diverse, engaging starts that feel natural and specific to each sermon's unique message\n"
-        "- Use creative phrases to avoid repetitiveness. Never use phrases like \"you'll discover\", \"You'll learn...\", \"In a world...\", \"is a journey through...\", \"By the end you'll..\", \"this message invites you...\", \"You'll rediscover...\", etc. Assume the listener is reading many of these at a time and we want to avoid repeating phrases. Be creative and think outside the box."
-        "\n\n"
-        "Guidelines:\n"
-        "- Use language that helps listeners imagine themselves benefiting from the message using diverse, engaging and thought provoking language that feels natural and specific to each sermon's unique message\n"
-        "- Focus on the transformation, insight, or practical wisdom the sermon offers\n"
-        "- Capture the sermon's emotional tone and spiritual purpose\n"
-        "- Be concise and punchy, avoiding dense or overly packed sentences\n"
-        "- Keep sentences short and clear; if a sentence has multiple clauses, consider breaking the idea into simpler parts\n"
-        "- Write to inform laypeople, not academics—content should be accessible but substantive\n"
-        "- Write in an engaging tone that reflects the sermon's spirit and makes people want to listen\n"
-        "- Balance accessibility with theological substance—explain concepts naturally without dumbing down\n"
-        "- End with a closing sentence, or final insight or question that leaves the listener reflecting—avoid generic wrap-ups or repeating earlier phrases\n"
-        "- Prioritize clarity, readability, and relatability for everyday people over religious jargon\n"
-        "- Avoid simply retelling biblical stories or sermon content—focus on the takeaway and application\n"
-        "- Reflect the emotional temperature of the sermon (e.g., convicting, comforting, celebratory, urgent) so each summary feels true to its heart\n"
-        "- You may use light metaphor or imagery only when it directly reflects the sermon's expressed themes, not when inventing new symbolic language."
+        "You are an expert at summarizing Christian sermons for church audiences. "
+        "Your task is to create a single-paragraph summary that captures what listeners will experience, "
+        "wrestle with, and take away from the sermon, not a flat recap of the outline.\n\n"
+        "Core requirements:\n"
+        "- Write for listeners of the sermon, speaking directly to \"you\" as an individual, not \"you all\" or \"we the church\".\n"
+        "- Tone: warm, conversational, invitational, and spiritually honest. It can comfort, challenge, or provoke reflection depending on the sermon, but it must not sound like marketing copy.\n"
+        "- The summary must be a single paragraph (no line breaks within the summary) and no more than 120 words. Less is better if you can clearly communicate the core message.\n"
+        "- Do not mention the preacher's name, the church name, sermon series title, or service details.\n"
+        "- Only reference specific Scripture passages if they are essential to the main idea; otherwise focus on the lived implications for the listener.\n\n"
+        "Style and structure:\n"
+        "- Do not talk about \"this message\" or \"this sermon\". Instead, speak directly about what God is doing and what the listener may notice or experience.\n"
+        "- Vary your sentence structure; avoid beginning most sentences with \"You\", \"This\", or \"As you\".\n"
+        "- Use specific, sermon-rooted language (key images, tensions, concrete situations) instead of generic spiritual phrases that could apply to any sermon.\n"
+        "- The summary should feel like a living invitation into the heart of this particular sermon, not a generic devotional thought.\n\n"
+        "Overused openings to avoid in this summary:\n"
+        "- Do NOT start with any of these or close paraphrases:\n"
+        "  - \"In a world\" or \"In a world where...\"\n"
+        "  - \"Life often feels...\" or \"Life can often feel...\"\n"
+        "  - \"Imagine living...\" or \"Imagine a world where...\"\n"
+        "  - \"Have you ever felt...\"\n"
+        "  - \"Today, you'll discover...\" or similar \"Today, you'll...\" openings\n"
+        "  - Stock phrases like \"Emotions are an integral part of our humanity...\"\n"
+        "Begin instead with a sentence that grows directly out of the sermon's core tension or promise.\n\n"
+        "Overused transitions to avoid in this summary:\n"
+        "- Do NOT use any of these phrases or close paraphrases:\n"
+        "  - \"This message invites you to...\" or \"This sermon invites you to...\"\n"
+        "  - \"You'll discover that...\" or \"You'll learn that...\"\n"
+        "  - \"You'll be encouraged to...\" or \"You'll be challenged to...\"\n"
+        "  - \"You are invited to explore...\"\n"
+        "  - \"As you reflect on...\" or \"As you engage with this message...\"\n"
+        "  - \"Ultimately, you'll...\" or \"Ultimately, you will...\"\n"
+        "Instead, describe what the listener may notice, wrestle with, or begin to see using concrete verbs tied to the sermon (for example: confront, trust, risk, lament, forgive, reorder priorities).\n\n"
+        "Closings:\n"
+        "- Do NOT end with a generic rhetorical question like \"How will you respond?\", \"What will you do with this?\", or \"How might this change your life?\".\n"
+        "- End with a specific, sermon-rooted line that names the kind of shift, comfort, or challenge the listener might carry with them.\n\n"
+        "Self-check before you answer:\n"
+        "- Re-read your summary and remove any mention of \"this message\", \"this sermon\", \"today we\", or similar meta-commentary.\n"
+        "- Replace any generic patterns like \"you'll discover\", \"you'll learn\", \"you'll be encouraged\", or \"you'll be challenged\" with more concrete, sermon-specific language.\n"
+        "- Ensure you did NOT start with any banned openings or end with a generic \"How will you respond?\"-type question.\n"
+        "- Confirm the output is a single paragraph under 120 words in plain text."
     )
 
     user_prompt = (
@@ -307,15 +316,15 @@ def generate_sermon_summary(transcript: str, title: str, passage_ref: str = "") 
         client = OpenAI(api_key=get_openai_api_key())
 
         print("Generating sermon summary with GPT-4o-mini...")
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            max_completion_tokens=400,  # Increased for ~120 word paragraph
-            temperature=0.3
-        )
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                max_completion_tokens=400,  # Increased for ~120 word paragraph
+                temperature=0.45
+            )
 
         summary_text = response.choices[0].message.content.strip()
 
