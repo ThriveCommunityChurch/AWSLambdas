@@ -94,38 +94,9 @@ def get_chat_model_name() -> str:
     """Get the chat model/deployment name based on provider."""
     provider = os.environ.get('OPENAI_PROVIDER', 'azure')
     if provider == 'azure':
-        return os.environ.get('AZURE_CHAT_DEPLOYMENT', 'gpt-5-mini')
+        return os.environ.get('AZURE_CHAT_DEPLOYMENT', 'gpt-4o')
     else:
         return os.environ.get('OPENAI_CHAT_MODEL', 'gpt-4o-mini')
-
-
-def build_chat_completion_kwargs(
-    model: str,
-    messages: list,
-    max_tokens: int,
-    temperature: float = None
-) -> dict:
-    """
-    Build kwargs for chat.completions.create() that respect provider restrictions.
-
-    Azure's gpt-5-mini (reasoning model) restrictions:
-    - temperature: Only supports default (1), custom values not allowed
-    - max_tokens: Must use max_completion_tokens instead
-    """
-    provider = os.environ.get('OPENAI_PROVIDER', 'azure')
-
-    kwargs = {
-        "model": model,
-        "messages": messages,
-        "max_completion_tokens": max_tokens,
-    }
-
-    # Azure gpt-5-mini doesn't support custom temperature
-    # Only add temperature for public OpenAI
-    if provider != 'azure' and temperature is not None:
-        kwargs["temperature"] = temperature
-
-    return kwargs
 
 
 def get_mongodb_client():
@@ -375,7 +346,7 @@ def generate_sermon_summary(transcript: str, title: str, passage_ref: str = "") 
         model = get_chat_model_name()
 
         print(f"Generating sermon summary with {model}...")
-        kwargs = build_chat_completion_kwargs(
+        response = client.chat.completions.create(
             model=model,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -384,7 +355,6 @@ def generate_sermon_summary(transcript: str, title: str, passage_ref: str = "") 
             max_tokens=400,
             temperature=0.45
         )
-        response = client.chat.completions.create(**kwargs)
 
         summary_text = response.choices[0].message.content.strip()
 
@@ -462,7 +432,7 @@ def generate_tags(summary_text: str, transcript: str, title: str) -> List[str]:
         model = get_chat_model_name()
 
         print(f"Analyzing sermon content (summary + transcript) and applying tags with {model}...")
-        kwargs = build_chat_completion_kwargs(
+        response = client.chat.completions.create(
             model=model,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -471,7 +441,6 @@ def generate_tags(summary_text: str, transcript: str, title: str) -> List[str]:
             max_tokens=100,
             temperature=0.2
         )
-        response = client.chat.completions.create(**kwargs)
 
         response_text = response.choices[0].message.content.strip()
 

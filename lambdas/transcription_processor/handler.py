@@ -102,7 +102,8 @@ def get_transcription_model_name() -> str:
         # Azure deployment name (whisper has no duration limit, gpt-4o-transcribe has 25min limit)
         return os.environ.get('AZURE_TRANSCRIPTION_DEPLOYMENT', 'whisper')
     else:
-        return os.environ.get('OPENAI_TRANSCRIPTION_MODEL', 'whisper')
+        # Public OpenAI uses whisper-1
+        return os.environ.get('OPENAI_TRANSCRIPTION_MODEL', 'whisper-1')
 
 
 def get_mongodb_client():
