@@ -107,6 +107,35 @@ def get_chat_model_name() -> str:
         return os.environ.get('OPENAI_CHAT_MODEL', 'gpt-4o-mini')
 
 
+def build_chat_completion_kwargs(
+    model: str,
+    messages: list,
+    max_tokens: int,
+    temperature: float = None
+) -> dict:
+    """
+    Build kwargs for chat.completions.create() that respect provider restrictions.
+
+    Azure's gpt-5-mini (reasoning model) restrictions:
+    - temperature: Only supports default (1), custom values not allowed
+    - max_tokens: Must use max_completion_tokens instead
+    """
+    provider = os.environ.get('OPENAI_PROVIDER', 'azure')
+
+    kwargs = {
+        "model": model,
+        "messages": messages,
+        "max_completion_tokens": max_tokens,
+    }
+
+    # Azure gpt-5-mini doesn't support custom temperature
+    # Only add temperature for public OpenAI
+    if provider != 'azure' and temperature is not None:
+        kwargs["temperature"] = temperature
+
+    return kwargs
+
+
 # =============================================================================
 # STATIC CHANNEL HEADER (only lastBuildDate changes)
 # =============================================================================
@@ -274,15 +303,16 @@ def generate_podcast_description(transcript: str, title: str, speaker: str, pass
         model = get_chat_model_name()
 
         print(f"Generating podcast description with {model}...")
-        response = client.chat.completions.create(
+        kwargs = build_chat_completion_kwargs(
             model=model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            max_completion_tokens=500,
-            temperature=0.6  # Slightly higher for more engaging, varied language
+            max_tokens=500,
+            temperature=0.6
         )
+        response = client.chat.completions.create(**kwargs)
 
         description = response.choices[0].message.content.strip()
         print(f"Podcast description generated: {len(description.split())} words")
