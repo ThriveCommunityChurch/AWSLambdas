@@ -71,21 +71,40 @@ def get_mongodb_uri() -> str:
     return get_secret(os.environ['MONGODB_SECRET_ARN'], secret_key)
 
 
-def get_azure_openai_api_key() -> str:
-    """Get Azure OpenAI API key from Secrets Manager."""
-    # Uses Azure_OpenAI_ApiKey secret key (migrated from OpenAI_ChatCompletions_ApiKey)
-    secret_key = os.environ.get('OPENAI_SECRET_KEY', 'Azure_OpenAI_ApiKey')
+def get_openai_api_key() -> str:
+    """Get OpenAI API key from Secrets Manager based on provider."""
+    provider = os.environ.get('OPENAI_PROVIDER', 'azure')
+    if provider == 'azure':
+        secret_key = os.environ.get('OPENAI_SECRET_KEY', 'Azure_OpenAI_ApiKey')
+    else:
+        secret_key = os.environ.get('OPENAI_SECRET_KEY', 'OpenAI_ChatCompletions_ApiKey')
     return get_secret(os.environ['OPENAI_SECRET_ARN'], secret_key)
 
 
-def get_azure_openai_client():
-    """Create Azure OpenAI client for chat completions."""
-    from openai import AzureOpenAI
-    return AzureOpenAI(
-        azure_endpoint="https://thrive-fl.openai.azure.com/",
-        api_key=get_azure_openai_api_key(),
-        api_version="2024-10-21"
-    )
+def get_openai_client():
+    """Create OpenAI client based on OPENAI_PROVIDER environment variable."""
+    provider = os.environ.get('OPENAI_PROVIDER', 'azure')
+    api_key = get_openai_api_key()
+
+    if provider == 'azure':
+        from openai import AzureOpenAI
+        return AzureOpenAI(
+            azure_endpoint=os.environ.get('AZURE_OPENAI_ENDPOINT', 'https://thrive-fl.openai.azure.com/'),
+            api_key=api_key,
+            api_version=os.environ.get('AZURE_OPENAI_API_VERSION', '2024-10-21')
+        )
+    else:
+        from openai import OpenAI
+        return OpenAI(api_key=api_key)
+
+
+def get_chat_model_name() -> str:
+    """Get the chat model/deployment name based on provider."""
+    provider = os.environ.get('OPENAI_PROVIDER', 'azure')
+    if provider == 'azure':
+        return os.environ.get('AZURE_CHAT_DEPLOYMENT', 'gpt-5-mini')
+    else:
+        return os.environ.get('OPENAI_CHAT_MODEL', 'gpt-4o-mini')
 
 
 # =============================================================================
@@ -251,11 +270,12 @@ def generate_podcast_description(transcript: str, title: str, speaker: str, pass
     )
 
     try:
-        client = get_azure_openai_client()
+        client = get_openai_client()
+        model = get_chat_model_name()
 
-        print("Generating podcast description with Azure OpenAI (gpt-5-mini)...")
+        print(f"Generating podcast description with {model}...")
         response = client.chat.completions.create(
-            model="gpt-5-mini",  # Azure deployment name
+            model=model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}

@@ -68,21 +68,41 @@ def get_mongodb_uri() -> str:
     return get_secret(os.environ['MONGODB_SECRET_ARN'], secret_key)
 
 
-def get_azure_openai_api_key() -> str:
-    """Get Azure OpenAI API key from Secrets Manager."""
-    # Uses Azure_OpenAI_ApiKey secret key (migrated from OpenAI_ChatCompletions_ApiKey)
-    secret_key = os.environ.get('OPENAI_SECRET_KEY', 'Azure_OpenAI_ApiKey')
+def get_openai_api_key() -> str:
+    """Get OpenAI API key from Secrets Manager based on provider."""
+    provider = os.environ.get('OPENAI_PROVIDER', 'azure')
+    if provider == 'azure':
+        secret_key = os.environ.get('OPENAI_SECRET_KEY', 'Azure_OpenAI_ApiKey')
+    else:
+        secret_key = os.environ.get('OPENAI_SECRET_KEY', 'OpenAI_ChatCompletions_ApiKey')
     return get_secret(os.environ['OPENAI_SECRET_ARN'], secret_key)
 
 
-def get_azure_openai_client():
-    """Create Azure OpenAI client for Whisper transcription."""
-    from openai import AzureOpenAI
-    return AzureOpenAI(
-        azure_endpoint="https://thrive-fl.openai.azure.com/",
-        api_key=get_azure_openai_api_key(),
-        api_version="2024-10-21"
-    )
+def get_openai_client():
+    """Create OpenAI client based on OPENAI_PROVIDER environment variable."""
+    provider = os.environ.get('OPENAI_PROVIDER', 'azure')
+    api_key = get_openai_api_key()
+
+    if provider == 'azure':
+        from openai import AzureOpenAI
+        return AzureOpenAI(
+            azure_endpoint=os.environ.get('AZURE_OPENAI_ENDPOINT', 'https://thrive-fl.openai.azure.com/'),
+            api_key=api_key,
+            api_version=os.environ.get('AZURE_OPENAI_API_VERSION', '2024-10-21')
+        )
+    else:
+        from openai import OpenAI
+        return OpenAI(api_key=api_key)
+
+
+def get_transcription_model_name() -> str:
+    """Get the transcription model/deployment name based on provider."""
+    provider = os.environ.get('OPENAI_PROVIDER', 'azure')
+    if provider == 'azure':
+        # Azure deployment name (whisper has no duration limit, gpt-4o-transcribe has 25min limit)
+        return os.environ.get('AZURE_TRANSCRIPTION_DEPLOYMENT', 'whisper')
+    else:
+        return os.environ.get('OPENAI_TRANSCRIPTION_MODEL', 'whisper')
 
 
 def get_mongodb_client():
@@ -221,18 +241,16 @@ def compress_audio_for_whisper(audio_path: str) -> Optional[str]:
 
 
 def transcribe_audio(audio_path: str) -> Optional[str]:
-    """Transcribe audio file using Azure OpenAI Whisper API."""
+    """Transcribe audio file using OpenAI or Azure OpenAI transcription API."""
     compressed_path = None
     try:
-        client = get_azure_openai_client()
-
-        # Get transcription deployment name from environment (default: gpt-4o-transcribe)
-        transcription_deployment = os.environ.get('WHISPER_DEPLOYMENT_NAME', 'gpt-4o-transcribe')
+        client = get_openai_client()
+        model = get_transcription_model_name()
 
         # Compress if over 25MB
         transcribe_path = compress_audio_for_whisper(audio_path)
         if not transcribe_path:
-            print("Failed to compress audio for Whisper")
+            print("Failed to compress audio for transcription")
             return None
 
         # Track if we created a compressed file (for cleanup)
@@ -240,9 +258,9 @@ def transcribe_audio(audio_path: str) -> Optional[str]:
             compressed_path = transcribe_path
 
         with open(transcribe_path, 'rb') as audio_file:
-            print(f"Starting Azure OpenAI transcription (deployment: {transcription_deployment})...")
+            print(f"Starting transcription with {model}...")
             response = client.audio.transcriptions.create(
-                model=transcription_deployment,  # Azure deployment name (gpt-4o-transcribe)
+                model=model,
                 file=audio_file,
                 response_format="text"
             )

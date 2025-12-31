@@ -13,6 +13,16 @@ Parameters:
       - dev
       - prod
     Description: Deployment environment
+  OpenAIProvider:
+    Type: String
+    Default: azure
+    AllowedValues:
+      - azure
+      - openai
+    Description: >
+      OpenAI provider to use for AI features.
+      azure: Uses Azure OpenAI (Azure_OpenAI_ApiKey secret, gpt-5-mini/gpt-4o-transcribe deployments)
+      openai: Uses public OpenAI (OpenAI_ChatCompletions_ApiKey secret, gpt-4o-mini/whisper-1 models)
 
 # =============================================================================
 # GLOBALS
@@ -28,9 +38,9 @@ Globals:
         # Shared secrets - all Lambdas need these
         MONGODB_SECRET_ARN: arn:aws:secretsmanager:us-east-2:349570132161:secret:thrive-api/database
         MONGODB_SECRET_KEY: MongoConnectionString
-        # Azure OpenAI (migrated from public OpenAI)
         OPENAI_SECRET_ARN: arn:aws:secretsmanager:us-east-2:349570132161:secret:thrive-api/openai
-        OPENAI_SECRET_KEY: Azure_OpenAI_ApiKey
+        # OpenAI Provider - set via CloudFormation parameter
+        OPENAI_PROVIDER: !Ref OpenAIProvider
 
 # =============================================================================
 # RESOURCES
@@ -39,13 +49,13 @@ Resources:
 
   # ---------------------------------------------------------------------------
   # Lambda 1: Transcription Processor (Entry Point)
-  # Downloads audio, transcribes with Azure OpenAI, invokes Sermon + Podcast Lambdas
+  # Downloads audio, transcribes with OpenAI/Azure, invokes Sermon + Podcast Lambdas
   # ---------------------------------------------------------------------------
   TranscriptionProcessorFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub transcription-processor-${Environment}
-      Description: Transcribes audio with Azure OpenAI, then invokes Sermon and Podcast Lambdas
+      Description: Transcribes audio, then invokes Sermon and Podcast Lambdas
       Handler: handler.lambda_handler
       CodeUri: lambdas/transcription_processor/
       Timeout: 900  # 15 minutes max for long audio transcription
@@ -58,7 +68,6 @@ Resources:
           S3_BUCKET: thrive-audio
           SERMON_LAMBDA_NAME: !Sub sermon-processor-${Environment}
           PODCAST_LAMBDA_NAME: !Sub podcast-rss-generator-${Environment}
-          WHISPER_DEPLOYMENT_NAME: gpt-4o-transcribe
 
   TranscriptionProcessorLogGroup:
     Type: AWS::Logs::LogGroup
