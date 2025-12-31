@@ -3,13 +3,14 @@ Transcription Processor Lambda
 
 Entry point for the sermon processing pipeline.
 1. Downloads audio from S3 (to /tmp)
-2. Transcribes with OpenAI Whisper API (~$0.24/episode for 40 min)
+2. Transcribes with Azure OpenAI Whisper API
 3. Invokes Sermon Lambda with { messageId, transcript, title, passageRef }
 4. Invokes Podcast Lambda with { messageId, transcript, title, speaker, audioUrl, ... }
 
 Environment Variables:
 - MONGODB_SECRET_ARN: Secrets Manager ARN for MongoDB URI (to fetch message metadata)
-- OPENAI_SECRET_ARN: Secrets Manager ARN for OpenAI API key
+- OPENAI_SECRET_ARN: Secrets Manager ARN for Azure OpenAI API key (Azure_OpenAI_ApiKey)
+- WHISPER_DEPLOYMENT_NAME: Azure OpenAI Whisper deployment name (default: whisper)
 - SERMON_LAMBDA_NAME: Name of the sermon processor Lambda
 - PODCAST_LAMBDA_NAME: Name of the podcast RSS generator Lambda
 - S3_BUCKET: S3 bucket for audio files (default: thrive-audio)
@@ -67,10 +68,21 @@ def get_mongodb_uri() -> str:
     return get_secret(os.environ['MONGODB_SECRET_ARN'], secret_key)
 
 
-def get_openai_api_key() -> str:
-    """Get OpenAI API key from Secrets Manager."""
-    secret_key = os.environ.get('OPENAI_SECRET_KEY')
+def get_azure_openai_api_key() -> str:
+    """Get Azure OpenAI API key from Secrets Manager."""
+    # Uses Azure_OpenAI_ApiKey secret key (migrated from OpenAI_ChatCompletions_ApiKey)
+    secret_key = os.environ.get('OPENAI_SECRET_KEY', 'Azure_OpenAI_ApiKey')
     return get_secret(os.environ['OPENAI_SECRET_ARN'], secret_key)
+
+
+def get_azure_openai_client():
+    """Create Azure OpenAI client for Whisper transcription."""
+    from openai import AzureOpenAI
+    return AzureOpenAI(
+        azure_endpoint="https://thrive-fl.openai.azure.com/",
+        api_key=get_azure_openai_api_key(),
+        api_version="2024-10-21"
+    )
 
 
 def get_mongodb_client():
@@ -209,11 +221,13 @@ def compress_audio_for_whisper(audio_path: str) -> Optional[str]:
 
 
 def transcribe_audio(audio_path: str) -> Optional[str]:
-    """Transcribe audio file using OpenAI Whisper API."""
+    """Transcribe audio file using Azure OpenAI Whisper API."""
     compressed_path = None
     try:
-        from openai import OpenAI
-        client = OpenAI(api_key=get_openai_api_key())
+        client = get_azure_openai_client()
+
+        # Get transcription deployment name from environment (default: gpt-4o-transcribe)
+        transcription_deployment = os.environ.get('WHISPER_DEPLOYMENT_NAME', 'gpt-4o-transcribe')
 
         # Compress if over 25MB
         transcribe_path = compress_audio_for_whisper(audio_path)
@@ -226,9 +240,9 @@ def transcribe_audio(audio_path: str) -> Optional[str]:
             compressed_path = transcribe_path
 
         with open(transcribe_path, 'rb') as audio_file:
-            print("Starting Whisper transcription...")
+            print(f"Starting Azure OpenAI transcription (deployment: {transcription_deployment})...")
             response = client.audio.transcriptions.create(
-                model="whisper-1",
+                model=transcription_deployment,  # Azure deployment name (gpt-4o-transcribe)
                 file=audio_file,
                 response_format="text"
             )

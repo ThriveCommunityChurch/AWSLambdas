@@ -2,14 +2,14 @@
 Sermon Processor Lambda
 
 Receives transcript and messageId, then:
-1. Generates sermon summary (GPT-4o mini)
+1. Generates sermon summary (Azure OpenAI gpt-5-mini)
 2. Generates waveform data (FFmpeg + pure Python RMS) - if audio URL provided
-3. Generates tags (GPT-4o mini)
+3. Generates tags (Azure OpenAI gpt-5-mini)
 4. Updates SermonMessages collection in MongoDB
 
 Environment Variables:
 - MONGODB_SECRET_ARN: Secrets Manager ARN for MongoDB URI
-- OPENAI_SECRET_ARN: Secrets Manager ARN for OpenAI API key
+- OPENAI_SECRET_ARN: Secrets Manager ARN for Azure OpenAI API key (Azure_OpenAI_ApiKey)
 
 Note: Waveform generation requires FFmpeg Lambda Layer. Uses pure Python RMS
 calculation to avoid heavy ML dependencies (librosa, numpy, scipy) that would
@@ -63,10 +63,21 @@ def get_mongodb_uri() -> str:
     return get_secret(os.environ['MONGODB_SECRET_ARN'], secret_key)
 
 
-def get_openai_api_key() -> str:
-    """Get OpenAI API key from Secrets Manager."""
-    secret_key = os.environ.get('OPENAI_SECRET_KEY')
+def get_azure_openai_api_key() -> str:
+    """Get Azure OpenAI API key from Secrets Manager."""
+    # Uses Azure_OpenAI_ApiKey secret key (migrated from OpenAI_ChatCompletions_ApiKey)
+    secret_key = os.environ.get('OPENAI_SECRET_KEY', 'Azure_OpenAI_ApiKey')
     return get_secret(os.environ['OPENAI_SECRET_ARN'], secret_key)
+
+
+def get_azure_openai_client():
+    """Create Azure OpenAI client for chat completions."""
+    from openai import AzureOpenAI
+    return AzureOpenAI(
+        azure_endpoint="https://thrive-fl.openai.azure.com/",
+        api_key=get_azure_openai_api_key(),
+        api_version="2024-10-21"
+    )
 
 
 def get_mongodb_client():
@@ -312,12 +323,11 @@ def generate_sermon_summary(transcript: str, title: str, passage_ref: str = "") 
     )
 
     try:
-        from openai import OpenAI
-        client = OpenAI(api_key=get_openai_api_key())
+        client = get_azure_openai_client()
 
-        print("Generating sermon summary with GPT-4o-mini...")
+        print("Generating sermon summary with Azure OpenAI (gpt-5-mini)...")
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-5-mini",  # Azure deployment name
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
@@ -377,7 +387,7 @@ def generate_tags(summary_text: str, transcript: str, title: str) -> List[str]:
         "- Tag names are case-sensitive and must match exactly\n\n"
         f"Available tags:\n{tags_str}\n\n"
         "Respond with a JSON array of selected tags, for example:\n"
-        '[\"Faith\", \"Prayer\", \"Suffering\", \"Hope\"]'
+        '[\"Prayer\", \"Suffering\", \"Hope\"]'
     )
 
     # Limit transcription to ~15000 characters for comprehensive context while managing tokens
@@ -398,12 +408,11 @@ def generate_tags(summary_text: str, transcript: str, title: str) -> List[str]:
     )
 
     try:
-        from openai import OpenAI
-        client = OpenAI(api_key=get_openai_api_key())
+        client = get_azure_openai_client()
 
-        print("Analyzing sermon content (summary + transcript) and applying tags with GPT-4o-mini...")
+        print("Analyzing sermon content (summary + transcript) and applying tags with Azure OpenAI (gpt-5-mini)...")
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-5-mini",  # Azure deployment name
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}

@@ -28,8 +28,9 @@ Globals:
         # Shared secrets - all Lambdas need these
         MONGODB_SECRET_ARN: arn:aws:secretsmanager:us-east-2:349570132161:secret:thrive-api/database
         MONGODB_SECRET_KEY: MongoConnectionString
+        # Azure OpenAI (migrated from public OpenAI)
         OPENAI_SECRET_ARN: arn:aws:secretsmanager:us-east-2:349570132161:secret:thrive-api/openai
-        OPENAI_SECRET_KEY: OpenAI_ChatCompletions_ApiKey
+        OPENAI_SECRET_KEY: Azure_OpenAI_ApiKey
 
 # =============================================================================
 # RESOURCES
@@ -38,25 +39,26 @@ Resources:
 
   # ---------------------------------------------------------------------------
   # Lambda 1: Transcription Processor (Entry Point)
-  # Downloads audio, transcribes with Whisper, invokes Sermon + Podcast Lambdas
+  # Downloads audio, transcribes with Azure OpenAI, invokes Sermon + Podcast Lambdas
   # ---------------------------------------------------------------------------
   TranscriptionProcessorFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub transcription-processor-${Environment}
-      Description: Transcribes audio with Whisper API, then invokes Sermon and Podcast Lambdas
+      Description: Transcribes audio with Azure OpenAI, then invokes Sermon and Podcast Lambdas
       Handler: handler.lambda_handler
       CodeUri: lambdas/transcription_processor/
       Timeout: 900  # 15 minutes max for long audio transcription
       MemorySize: 512  # More memory for audio download
       Role: arn:aws:iam::349570132161:role/podcast-lambda-execution-role
       # FFmpeg binary is bundled with the Lambda (downloaded during CI build)
-      # Used to compress audio >25MB before sending to Whisper API (32kbps mono)
+      # Used to compress audio >25MB before sending to transcription API (32kbps mono)
       Environment:
         Variables:
           S3_BUCKET: thrive-audio
           SERMON_LAMBDA_NAME: !Sub sermon-processor-${Environment}
           PODCAST_LAMBDA_NAME: !Sub podcast-rss-generator-${Environment}
+          WHISPER_DEPLOYMENT_NAME: gpt-4o-transcribe
 
   TranscriptionProcessorLogGroup:
     Type: AWS::Logs::LogGroup

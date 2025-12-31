@@ -7,7 +7,7 @@ Handles two actions:
 
 Environment Variables:
 - MONGODB_SECRET_ARN: Secrets Manager ARN for MongoDB URI
-- OPENAI_SECRET_ARN: Secrets Manager ARN for OpenAI API key
+- OPENAI_SECRET_ARN: Secrets Manager ARN for Azure OpenAI API key (Azure_OpenAI_ApiKey)
 - S3_BUCKET: S3 bucket name (default: thrive-audio)
 - S3_FEED_KEY: S3 key for RSS feed (default: feed/rss.xml)
 """
@@ -71,10 +71,21 @@ def get_mongodb_uri() -> str:
     return get_secret(os.environ['MONGODB_SECRET_ARN'], secret_key)
 
 
-def get_openai_api_key() -> str:
-    """Get OpenAI API key from Secrets Manager."""
-    secret_key = os.environ.get('OPENAI_SECRET_KEY')
+def get_azure_openai_api_key() -> str:
+    """Get Azure OpenAI API key from Secrets Manager."""
+    # Uses Azure_OpenAI_ApiKey secret key (migrated from OpenAI_ChatCompletions_ApiKey)
+    secret_key = os.environ.get('OPENAI_SECRET_KEY', 'Azure_OpenAI_ApiKey')
     return get_secret(os.environ['OPENAI_SECRET_ARN'], secret_key)
+
+
+def get_azure_openai_client():
+    """Create Azure OpenAI client for chat completions."""
+    from openai import AzureOpenAI
+    return AzureOpenAI(
+        azure_endpoint="https://thrive-fl.openai.azure.com/",
+        api_key=get_azure_openai_api_key(),
+        api_version="2024-10-21"
+    )
 
 
 # =============================================================================
@@ -240,12 +251,11 @@ def generate_podcast_description(transcript: str, title: str, speaker: str, pass
     )
 
     try:
-        from openai import OpenAI
-        client = OpenAI(api_key=get_openai_api_key())
+        client = get_azure_openai_client()
 
-        print("Generating podcast description with GPT-4o-mini...")
+        print("Generating podcast description with Azure OpenAI (gpt-5-mini)...")
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-5-mini",  # Azure deployment name
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
