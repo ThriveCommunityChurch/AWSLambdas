@@ -326,6 +326,8 @@ def upload_transcript_to_azure(message_id: str, transcript: str, metadata: Dict[
     Returns the blob URL on success, None on failure.
     Format: https://thrivefl.blob.core.windows.net/transcripts/{messageId}.json
     """
+    from azure.storage.blob import ContentSettings
+
     try:
         blob_service = get_blob_service_client()
         container_client = blob_service.get_container_client(AZURE_STORAGE_CONTAINER)
