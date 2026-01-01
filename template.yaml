@@ -71,7 +71,7 @@ Resources:
           # Azure Blob Storage for transcripts
           AZURE_STORAGE_ACCOUNT: thrivefl
           AZURE_STORAGE_CONTAINER: transcripts
-          AZURE_STORAGE_SECRET_ARN: arn:aws:secretsmanager:us-east-2:349570132161:secret:AzureStorageCredentials
+          AZURE_STORAGE_SECRET_ARN: arn:aws:secretsmanager:us-east-2:349570132161:secret:thrive-api/database
 
   TranscriptionProcessorLogGroup:
     Type: AWS::Logs::LogGroup

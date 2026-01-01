@@ -303,7 +303,7 @@ def get_azure_storage_connection_string() -> str:
     response = secrets_client.get_secret_value(SecretId=secret_arn)
     secret_value = json.loads(response['SecretString'])
 
-    return secret_value.get('Azure_Storage_ConnectionString')
+    return secret_value.get('AzureBlobsConnectionString')
 
 
 def get_blob_service_client():
