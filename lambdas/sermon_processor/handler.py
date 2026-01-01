@@ -272,6 +272,13 @@ TAG_TO_INT = {
     "Miracles": 96, "Prophecy": 97, "Healing": 98, "Community": 99, "Culture": 100, "Technology": 101,
 }
 
+# TranscriptFeature enum values (must match ThriveChurchOfficialAPI.Core.Enums.TranscriptFeature)
+TRANSCRIPT_FEATURE_TO_INT = {
+    "Transcript": 0,
+    "Notes": 1,
+    "StudyGuide": 2,
+}
+
 
 def convert_tags_to_ints(tags: List[str]) -> List[int]:
     """Convert string tag names to their integer enum values for MongoDB storage."""
@@ -282,6 +289,17 @@ def convert_tags_to_ints(tags: List[str]) -> List[int]:
         else:
             print(f"Warning: Unknown tag '{tag}' - skipping")
     return int_tags
+
+
+def convert_transcript_features_to_ints(features: List[str]) -> List[int]:
+    """Convert TranscriptFeature string names to their integer enum values for MongoDB storage."""
+    int_features = []
+    for feature in features:
+        if feature in TRANSCRIPT_FEATURE_TO_INT:
+            int_features.append(TRANSCRIPT_FEATURE_TO_INT[feature])
+        else:
+            print(f"Warning: Unknown transcript feature '{feature}' - skipping")
+    return int_features
 
 
 def generate_sermon_summary(transcript: str, title: str, passage_ref: str = "") -> str:
@@ -596,7 +614,8 @@ def generate_waveform_from_s3(audio_url: str, num_points: int = 480) -> Optional
 
 def update_sermon_message(db, message_id: str, summary: str, tags: List[str],
                           waveform_data: Optional[List[float]] = None,
-                          transcript_url: Optional[str] = None) -> bool:
+                          blob_url: Optional[str] = None,
+                          available_transcript_features: Optional[List[str]] = None) -> bool:
     """Update SermonMessage document with generated content."""
     try:
         collection = db[COLLECTION_NAME]
@@ -614,8 +633,14 @@ def update_sermon_message(db, message_id: str, summary: str, tags: List[str],
         if waveform_data:
             update_doc['WaveformData'] = waveform_data
 
-        if transcript_url:
-            update_doc['TranscriptUrl'] = transcript_url
+        if blob_url:
+            update_doc['BlobUrl'] = blob_url
+
+        if available_transcript_features:
+            # Convert string feature names to integer enum values for MongoDB storage
+            # The API uses C# enums (TranscriptFeature) which serialize to integers
+            int_features = convert_transcript_features_to_ints(available_transcript_features)
+            update_doc['AvailableTranscriptFeatures'] = int_features
 
         result = collection.update_one(
             {'_id': ObjectId(message_id)},
@@ -626,7 +651,8 @@ def update_sermon_message(db, message_id: str, summary: str, tags: List[str],
             print(f"No document found with _id: {message_id}")
             return False
 
-        print(f"Updated SermonMessage {message_id}: summary={len(summary)} chars, tags={tags} -> {int_tags}, transcriptUrl={transcript_url is not None}")
+        int_features = convert_transcript_features_to_ints(available_transcript_features) if available_transcript_features else []
+        print(f"Updated SermonMessage {message_id}: summary={len(summary)} chars, tags={tags} -> {int_tags}, blobUrl={blob_url is not None}, availableFeatures={available_transcript_features} -> {int_features}")
         return True
 
     except Exception as e:
@@ -646,20 +672,22 @@ def lambda_handler(event, context):
     {
         "messageId": "abc123",
         "transcript": "Full transcript text...",
-        "transcriptUrl": "https://thrivefl.blob.core.windows.net/transcripts/abc123.json",  // Optional - Azure Blob URL
+        "blobUrl": "https://thrivefl.blob.core.windows.net/transcripts/abc123.json",  // Optional - Azure Blob URL
         "title": "Sermon Title",
         "passageRef": "John 3:16",
         "audioUrl": "https://thrive-audio.s3.amazonaws.com/2025/file.mp3",  // Optional
-        "generateWaveform": true  // Optional, defaults to false
+        "generateWaveform": true,  // Optional, defaults to false
+        "availableTranscriptFeatures": ["SermonNotes", "StudyGuide"]  // Optional - list of generated features
     }
     """
     message_id = event.get('messageId')
     transcript = event.get('transcript', '')
-    transcript_url = event.get('transcriptUrl')  # Azure Blob URL
+    blob_url = event.get('blobUrl')  # Azure Blob URL
     title = event.get('title', '')
     passage_ref = event.get('passageRef', '')
     audio_url = event.get('audioUrl')
     generate_waveform = event.get('generateWaveform', False)
+    available_transcript_features = event.get('availableTranscriptFeatures', [])  # List of generated features
 
     if not message_id:
         return {
@@ -693,7 +721,10 @@ def lambda_handler(event, context):
         client = get_mongodb_client()
         db = client[DB_NAME]
 
-        success = update_sermon_message(db, message_id, summary, tags, waveform_data, transcript_url)
+        success = update_sermon_message(
+            db, message_id, summary, tags, waveform_data, blob_url,
+            available_transcript_features
+        )
 
         if success:
             return {
@@ -703,7 +734,8 @@ def lambda_handler(event, context):
                     'summary': summary,
                     'tags': tags,
                     'hasWaveform': waveform_data is not None,
-                    'transcriptUrl': transcript_url,
+                    'blobUrl': blob_url,
+                    'availableTranscriptFeatures': available_transcript_features,
                     'status': 'success'
                 }
             }

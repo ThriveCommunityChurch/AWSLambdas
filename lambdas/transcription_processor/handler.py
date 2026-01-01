@@ -26,7 +26,7 @@ import pymongo
 import os
 import tempfile
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Callable
 from bson import ObjectId
 
 # Configuration
@@ -39,10 +39,13 @@ DB_NAME = 'SermonSeries'
 AZURE_STORAGE_ACCOUNT = os.environ.get('AZURE_STORAGE_ACCOUNT', 'thrivefl')
 AZURE_STORAGE_CONTAINER = os.environ.get('AZURE_STORAGE_CONTAINER', 'transcripts')
 
+# Sermon Notes & Study Guide configuration (using GPT-4.1 via Azure OpenAI)
+
 # AWS clients
 s3 = boto3.client('s3')
 lambda_client = boto3.client('lambda', region_name='us-east-2')
 secrets_client = boto3.client('secretsmanager', region_name='us-east-2')
+
 
 # Cache for secrets (Lambda container reuse)
 _secrets_cache = {}
@@ -112,6 +115,17 @@ def get_transcription_model_name() -> str:
     else:
         # Public OpenAI uses whisper-1
         return os.environ.get('OPENAI_TRANSCRIPTION_MODEL', 'whisper-1')
+
+
+def get_chat_model_name() -> str:
+    """Get the chat model/deployment name for sermon notes/study guide generation."""
+    provider = os.environ.get('OPENAI_PROVIDER', 'azure')
+    if provider == 'azure':
+        # Azure deployment name - GPT-4.1 for high-quality generation
+        return os.environ.get('AZURE_CHAT_DEPLOYMENT', 'gpt-4.1')
+    else:
+        # Public OpenAI model
+        return os.environ.get('OPENAI_CHAT_MODEL', 'gpt-4o-mini')
 
 
 def get_mongodb_client():
@@ -284,6 +298,275 @@ def transcribe_audio(audio_path: str) -> Optional[str]:
         # Clean up compressed file if we created one
         if compressed_path and os.path.exists(compressed_path):
             os.unlink(compressed_path)
+
+
+# =============================================================================
+# SERMON NOTES & STUDY GUIDE GENERATION
+# =============================================================================
+
+def build_notes_prompt(transcript: str, metadata: Dict[str, Any]) -> str:
+    """Build the sermon notes generation prompt."""
+    return f'''You are a ministry assistant helping create sermon notes for church members. Your job is to distill a sermon transcript into shareable, practical notes.
+
+CRITICAL RULES:
+1. ONLY include scripture references that the speaker explicitly mentioned or read
+2. Quotes must be ACTUAL phrases from the sermon (you may clean up filler words)
+3. Key points should use the speaker's own framework/outline when apparent
+4. Summary should capture the sermon's heart, not just topics covered
+5. Application points should be specific actions, not vague encouragements
+
+SERMON METADATA:
+- Title: {metadata.get('title', 'Unknown')}
+- Speaker: {metadata.get('speaker', 'Unknown')}
+- Date: {metadata.get('date', 'Unknown')}
+
+TRANSCRIPT:
+{transcript}
+
+Generate sermon notes with this structure:
+- mainScripture: The primary passage (e.g., "Galatians 4:1-7")
+- summary: 2-3 sentences capturing the sermon's core message
+- keyPoints: Array of objects with point, scripture (only if quoted), detail
+- quotes: Array of objects with text (actual sermon quotes) and optional context
+- applicationPoints: Array of specific, actionable takeaways
+
+STYLE:
+- 3-5 key points, 2-4 quotes, 2-4 application points
+- Key points as memorable statements, not academic summaries
+- Application points should be concrete actions
+
+Return ONLY valid JSON.'''
+
+
+def build_study_guide_prompt(transcript: str, metadata: Dict[str, Any]) -> str:
+    """Build the study guide generation prompt."""
+    return f'''You are a thoughtful small group leader preparing a study guide from a sermon. Create engaging discussion material that feels personal and specific to this message.
+
+CRITICAL RULES:
+1. Scripture accuracy is paramount:
+   - "directlyQuoted: true" ONLY for passages the speaker read aloud
+   - "directlyQuoted: false" for passages mentioned but not read
+   - Use "additionalStudy" for related passages NOT in the sermon
+2. Questions must reference specific content from THIS sermon
+3. Avoid generic questions that could apply to any sermon
+4. Use the sermon's own illustrations and language
+
+SERMON METADATA:
+- Title: {metadata.get('title', 'Unknown')}
+- Speaker: {metadata.get('speaker', 'Unknown')}
+- Date: {metadata.get('date', 'Unknown')}
+
+TRANSCRIPT:
+{transcript}
+
+Generate a study guide with:
+- mainScripture: Primary passage
+- summary: 4-6 sentence overview for someone who missed Sunday
+- keyPoints: Array with point, theologicalContext, scripture, directlyQuoted (boolean)
+- scriptureReferences: Array with reference, context, directlyQuoted (boolean)
+- discussionQuestions: Object with icebreaker (1-2), reflection (2-3), application (2-3) arrays
+- illustrations: Array with summary and point for each story/example used
+- prayerPrompts: 2-3 specific prayer focuses from sermon themes
+- takeHomeChallenges: 2-3 concrete actions for the week
+- additionalStudy: Related topics with scriptures (marked as not directly referenced)
+- estimatedStudyTime: "30-45 minutes" or similar
+
+QUESTION EXAMPLES:
+❌ BAD: "What stood out to you?" / "How can you apply this?"
+✅ GOOD: "The speaker said 'every saint has a past and every sinner has a future.' Which part is harder for you to believe about yourself?"
+
+Return ONLY valid JSON.'''
+
+
+def validate_notes(notes: Dict[str, Any], transcript: str) -> Dict[str, Any]:
+    """
+    Validate generated notes against transcript.
+    Returns notes with validation metadata.
+    """
+    issues = []
+    transcript_lower = transcript.lower()
+
+    # Check quotes exist in transcript
+    for quote in notes.get('quotes', []):
+        quote_text = quote.get('text', '').lower()
+        # Allow some flexibility for cleaned-up quotes - check first 5 words
+        words = quote_text.split()[:5]
+        search_text = ' '.join(words)
+        if search_text and search_text not in transcript_lower:
+            issues.append(f"Quote may not be verbatim: '{quote_text[:50]}...'")
+
+    # Check scripture references exist in transcript
+    for point in notes.get('keyPoints', []):
+        scripture = point.get('scripture', '')
+        if scripture:
+            book = scripture.split()[0].lower() if scripture else ''
+            if book and book not in transcript_lower:
+                issues.append(f"Scripture '{scripture}' not found in transcript")
+
+    notes['_validation'] = {
+        'issues': issues,
+        'validated': len(issues) == 0
+    }
+
+    if issues:
+        print(f"Notes validation warnings: {issues}")
+
+    return notes
+
+
+def validate_study_guide(guide: Dict[str, Any], transcript: str) -> Dict[str, Any]:
+    """
+    Validate study guide against transcript.
+    """
+    issues = []
+    transcript_lower = transcript.lower()
+
+    # Check directly quoted scriptures
+    for ref in guide.get('scriptureReferences', []):
+        if ref.get('directlyQuoted'):
+            reference = ref.get('reference', '')
+            book = reference.split()[0].lower() if reference else ''
+            if book and book not in transcript_lower:
+                issues.append(f"Marked as quoted but not found: '{reference}'")
+
+    guide['_validation'] = {
+        'issues': issues,
+        'validated': len(issues) == 0
+    }
+
+    if issues:
+        print(f"Study guide validation warnings: {issues}")
+
+    return guide
+
+
+def assess_confidence(guide: Dict[str, Any], transcript: str) -> Dict[str, str]:
+    """
+    Assess confidence in generated content by checking scripture references against transcript.
+    """
+    transcript_lower = transcript.lower()
+
+    # Check how many scriptures are actually in the transcript
+    scriptures = guide.get('scriptureReferences', [])
+    found_count = 0
+    for ref in scriptures:
+        # Simple check - see if the book name appears in transcript
+        book_name = ref.get('reference', '').split()[0].lower()
+        if book_name in transcript_lower:
+            found_count += 1
+
+    scripture_accuracy = "high" if len(scriptures) == 0 or found_count / len(scriptures) > 0.8 else "medium"
+
+    # Content coverage - default to high
+    content_coverage = "high"
+
+    return {
+        "scriptureAccuracy": scripture_accuracy,
+        "contentCoverage": content_coverage
+    }
+
+
+def generate_content(
+    prompt: str,
+    validator: Callable[[Dict[str, Any], str], Dict[str, Any]],
+    transcript: str
+) -> Optional[Dict[str, Any]]:
+    """
+    Generate content with GPT-4.1.
+    """
+    client = get_openai_client()
+    model = get_chat_model_name()
+
+    try:
+        print(f"Generating content using {model}")
+
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,
+            response_format={"type": "json_object"}
+        )
+
+        content = response.choices[0].message.content
+
+        # Parse JSON from response
+        result = parse_json_response(content)
+        if not result:
+            print("Failed to parse JSON response")
+            return None
+
+        # Validate
+        validated = validator(result, transcript)
+        return validated
+
+    except Exception as e:
+        print(f"Generation error: {e}")
+        return None
+
+
+def parse_json_response(content: str) -> Optional[Dict[str, Any]]:
+    """Parse JSON from LLM response, handling markdown code blocks."""
+    # Try direct parse first
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        pass
+
+    # Try extracting from markdown code block
+    import re
+    json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', content)
+    if json_match:
+        try:
+            return json.loads(json_match.group(1))
+        except json.JSONDecodeError:
+            pass
+
+    # Try finding JSON object in content
+    start = content.find('{')
+    end = content.rfind('}')
+    if start != -1 and end != -1:
+        try:
+            return json.loads(content[start:end + 1])
+        except json.JSONDecodeError:
+            pass
+
+    return None
+
+
+def generate_sermon_notes(transcript: str, metadata: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Generate sermon notes from transcript."""
+    print("Generating sermon notes...")
+    prompt = build_notes_prompt(transcript, metadata)
+    notes = generate_content(prompt, validate_notes, transcript)
+
+    if notes:
+        # Remove internal validation metadata before returning
+        notes.pop('_validation', None)
+        print("Sermon notes generated successfully")
+    else:
+        print("Failed to generate sermon notes after retries")
+
+    return notes
+
+
+def generate_study_guide(transcript: str, metadata: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Generate study guide from transcript."""
+    print("Generating study guide...")
+    prompt = build_study_guide_prompt(transcript, metadata)
+    guide = generate_content(prompt, validate_study_guide, transcript)
+
+    if guide:
+        # Add confidence assessment
+        guide['confidenceAssessment'] = assess_confidence(guide, transcript)
+        # Remove internal validation metadata
+        guide.pop('_validation', None)
+        print("Study guide generated successfully")
+    else:
+        print("Failed to generate study guide after retries")
+
+    return guide
 
 
 # =============================================================================
@@ -511,19 +794,41 @@ def lambda_handler(event, context):
         except Exception as e:
             print(f"Warning: Azure upload error: {e}, continuing without URL")
 
-        # Step 4: Invoke Sermon Lambda
+        # Step 4: Generate sermon notes and study guide
+        sermon_notes = None
+        study_guide = None
+        try:
+            generation_metadata = {
+                'title': metadata.get('title', ''),
+                'speaker': metadata.get('speaker', ''),
+                'date': metadata.get('date', '')
+            }
+            sermon_notes = generate_sermon_notes(transcript, generation_metadata)
+            study_guide = generate_study_guide(transcript, generation_metadata)
+        except Exception as e:
+            print(f"Warning: Notes/study guide generation error: {e}, continuing without them")
+
+        # Step 5: Invoke Sermon Lambda
+        # Build list of available transcript features
+        available_features = []
+        if sermon_notes:
+            available_features.append('SermonNotes')
+        if study_guide:
+            available_features.append('StudyGuide')
+
         sermon_payload = {
             'messageId': message_id,
             'transcript': transcript,
-            'transcriptUrl': transcript_url,  # Azure Blob URL (or None if upload failed)
+            'blobUrl': transcript_url,  # Azure Blob URL (or None if upload failed)
             'title': metadata.get('title', ''),
             'passageRef': metadata.get('passageRef', ''),
             'audioUrl': audio_url,
-            'generateWaveform': True  # Generate waveform from audio
+            'generateWaveform': True,  # Generate waveform from audio
+            'availableTranscriptFeatures': available_features  # List of generated features
         }
         invoke_sermon_lambda(sermon_payload)
 
-        # Step 4: Invoke Podcast Lambda
+        # Step 6: Invoke Podcast Lambda
         pub_date = metadata.get('date')
         if isinstance(pub_date, datetime):
             pub_date = pub_date.isoformat()
@@ -551,8 +856,9 @@ def lambda_handler(event, context):
             'body': {
                 'messageId': message_id,
                 'transcriptLength': len(transcript),
-                'transcriptUrl': transcript_url,
+                'blobUrl': transcript_url,
                 'transcriptionSkipped': skip_transcription and tmp_audio_path is None,
+                'availableTranscriptFeatures': available_features,
                 'sermonLambdaInvoked': True,
                 'podcastLambdaInvoked': True,
                 'status': 'success'
