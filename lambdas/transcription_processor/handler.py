@@ -311,7 +311,7 @@ def get_blob_service_client():
     global _blob_service_client
 
     if _blob_service_client is None:
-        from azure.storage.blob import BlobServiceClient
+        from azure.storage.blob import BlobServiceClient, ContentSettings
 
         connection_string = get_azure_storage_connection_string()
         _blob_service_client = BlobServiceClient.from_connection_string(connection_string)
