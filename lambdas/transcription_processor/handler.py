@@ -311,7 +311,7 @@ def get_blob_service_client():
     global _blob_service_client
 
     if _blob_service_client is None:
-        from azure.storage.blob import BlobServiceClient, ContentSettings
+        from azure.storage.blob import BlobServiceClient, ContentSettings, ContentSettings
 
         connection_string = get_azure_storage_connection_string()
         _blob_service_client = BlobServiceClient.from_connection_string(connection_string)
@@ -346,7 +346,7 @@ def upload_transcript_to_azure(message_id: str, transcript: str, metadata: Dict[
         blob_client.upload_blob(
             json.dumps(transcript_doc, indent=2),
             overwrite=True,
-            content_settings={'content_type': 'application/json'}
+            content_settings=ContentSettings(content_type='application/json')
         )
 
         transcript_url = f"https://{AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/{AZURE_STORAGE_CONTAINER}/{blob_name}"
