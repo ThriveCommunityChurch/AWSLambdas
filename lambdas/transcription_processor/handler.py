@@ -4,16 +4,20 @@ Transcription Processor Lambda
 Entry point for the sermon processing pipeline.
 1. Downloads audio from S3 (to /tmp)
 2. Transcribes with Azure OpenAI Whisper API
-3. Invokes Sermon Lambda with { messageId, transcript, title, passageRef }
-4. Invokes Podcast Lambda with { messageId, transcript, title, speaker, audioUrl, ... }
+3. Uploads transcript to Azure Blob Storage (transcripts container)
+4. Invokes Sermon Lambda with { messageId, transcript, transcriptUrl, title, passageRef }
+5. Invokes Podcast Lambda with { messageId, transcript, title, speaker, audioUrl, ... }
 
 Environment Variables:
 - MONGODB_SECRET_ARN: Secrets Manager ARN for MongoDB URI (to fetch message metadata)
 - OPENAI_SECRET_ARN: Secrets Manager ARN for Azure OpenAI API key (Azure_OpenAI_ApiKey)
+- AZURE_STORAGE_SECRET_ARN: Secrets Manager ARN for Azure Storage credentials
 - WHISPER_DEPLOYMENT_NAME: Azure OpenAI Whisper deployment name (default: whisper)
 - SERMON_LAMBDA_NAME: Name of the sermon processor Lambda
 - PODCAST_LAMBDA_NAME: Name of the podcast RSS generator Lambda
 - S3_BUCKET: S3 bucket for audio files (default: thrive-audio)
+- AZURE_STORAGE_ACCOUNT: Azure Storage account name (default: thrivefl)
+- AZURE_STORAGE_CONTAINER: Azure Blob container for transcripts (default: transcripts)
 """
 
 import boto3
@@ -30,6 +34,10 @@ S3_BUCKET = os.environ.get('S3_BUCKET', 'thrive-audio')
 SERMON_LAMBDA_NAME = os.environ.get('SERMON_LAMBDA_NAME', 'sermon-processor-prod')
 PODCAST_LAMBDA_NAME = os.environ.get('PODCAST_LAMBDA_NAME', 'podcast-rss-generator-prod')
 DB_NAME = 'SermonSeries'
+
+# Azure Blob Storage configuration
+AZURE_STORAGE_ACCOUNT = os.environ.get('AZURE_STORAGE_ACCOUNT', 'thrivefl')
+AZURE_STORAGE_CONTAINER = os.environ.get('AZURE_STORAGE_CONTAINER', 'transcripts')
 
 # AWS clients
 s3 = boto3.client('s3')
@@ -278,6 +286,78 @@ def transcribe_audio(audio_path: str) -> Optional[str]:
             os.unlink(compressed_path)
 
 
+# =============================================================================
+# AZURE BLOB STORAGE
+# =============================================================================
+
+# Cache for Azure Blob client
+_blob_service_client = None
+
+
+def get_azure_storage_connection_string() -> str:
+    """Get Azure Storage connection string from Secrets Manager."""
+    secret_arn = os.environ.get('AZURE_STORAGE_SECRET_ARN')
+    if not secret_arn:
+        raise ValueError("AZURE_STORAGE_SECRET_ARN environment variable not set")
+
+    response = secrets_client.get_secret_value(SecretId=secret_arn)
+    secret_value = json.loads(response['SecretString'])
+
+    return secret_value.get('Azure_Storage_ConnectionString')
+
+
+def get_blob_service_client():
+    """Get Azure Blob Service client using connection string."""
+    global _blob_service_client
+
+    if _blob_service_client is None:
+        from azure.storage.blob import BlobServiceClient
+
+        connection_string = get_azure_storage_connection_string()
+        _blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+
+    return _blob_service_client
+
+
+def upload_transcript_to_azure(message_id: str, transcript: str, metadata: Dict[str, Any]) -> Optional[str]:
+    """
+    Upload transcript JSON to Azure Blob Storage.
+
+    Returns the blob URL on success, None on failure.
+    Format: https://thrivefl.blob.core.windows.net/transcripts/{messageId}.json
+    """
+    try:
+        blob_service = get_blob_service_client()
+        container_client = blob_service.get_container_client(AZURE_STORAGE_CONTAINER)
+
+        blob_name = f"{message_id}.json"
+
+        # Create transcript document - keep it simple for querying
+        transcript_doc = {
+            'messageId': message_id,
+            'title': metadata.get('title', ''),
+            'speaker': metadata.get('speaker', ''),
+            'transcript': transcript,
+            'wordCount': len(transcript.split()),
+            'uploadedAt': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+        }
+
+        blob_client = container_client.get_blob_client(blob_name)
+        blob_client.upload_blob(
+            json.dumps(transcript_doc, indent=2),
+            overwrite=True,
+            content_settings={'content_type': 'application/json'}
+        )
+
+        transcript_url = f"https://{AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/{AZURE_STORAGE_CONTAINER}/{blob_name}"
+        print(f"Uploaded transcript to Azure Blob: {transcript_url}")
+        return transcript_url
+
+    except Exception as e:
+        print(f"Error uploading transcript to Azure Blob: {e}")
+        return None
+
+
 def invoke_sermon_lambda(payload: Dict[str, Any]) -> bool:
     """Invoke the Sermon Processor Lambda asynchronously."""
     try:
@@ -420,10 +500,20 @@ def lambda_handler(event, context):
                 'body': 'Failed to transcribe audio'
             }
 
-        # Step 3: Invoke Sermon Lambda
+        # Step 3: Upload transcript to Azure Blob Storage
+        transcript_url = None
+        try:
+            transcript_url = upload_transcript_to_azure(message_id, transcript, metadata)
+            if not transcript_url:
+                print("Warning: Failed to upload transcript to Azure, continuing without URL")
+        except Exception as e:
+            print(f"Warning: Azure upload error: {e}, continuing without URL")
+
+        # Step 4: Invoke Sermon Lambda
         sermon_payload = {
             'messageId': message_id,
             'transcript': transcript,
+            'transcriptUrl': transcript_url,  # Azure Blob URL (or None if upload failed)
             'title': metadata.get('title', ''),
             'passageRef': metadata.get('passageRef', ''),
             'audioUrl': audio_url,
@@ -459,6 +549,7 @@ def lambda_handler(event, context):
             'body': {
                 'messageId': message_id,
                 'transcriptLength': len(transcript),
+                'transcriptUrl': transcript_url,
                 'transcriptionSkipped': skip_transcription and tmp_audio_path is None,
                 'sermonLambdaInvoked': True,
                 'podcastLambdaInvoked': True,

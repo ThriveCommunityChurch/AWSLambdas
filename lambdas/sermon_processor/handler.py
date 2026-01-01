@@ -595,7 +595,8 @@ def generate_waveform_from_s3(audio_url: str, num_points: int = 480) -> Optional
 
 
 def update_sermon_message(db, message_id: str, summary: str, tags: List[str],
-                          waveform_data: Optional[List[float]] = None) -> bool:
+                          waveform_data: Optional[List[float]] = None,
+                          transcript_url: Optional[str] = None) -> bool:
     """Update SermonMessage document with generated content."""
     try:
         collection = db[COLLECTION_NAME]
@@ -613,6 +614,9 @@ def update_sermon_message(db, message_id: str, summary: str, tags: List[str],
         if waveform_data:
             update_doc['WaveformData'] = waveform_data
 
+        if transcript_url:
+            update_doc['TranscriptUrl'] = transcript_url
+
         result = collection.update_one(
             {'_id': ObjectId(message_id)},
             {'$set': update_doc}
@@ -622,7 +626,7 @@ def update_sermon_message(db, message_id: str, summary: str, tags: List[str],
             print(f"No document found with _id: {message_id}")
             return False
 
-        print(f"Updated SermonMessage {message_id}: summary={len(summary)} chars, tags={tags} -> {int_tags}")
+        print(f"Updated SermonMessage {message_id}: summary={len(summary)} chars, tags={tags} -> {int_tags}, transcriptUrl={transcript_url is not None}")
         return True
 
     except Exception as e:
@@ -642,6 +646,7 @@ def lambda_handler(event, context):
     {
         "messageId": "abc123",
         "transcript": "Full transcript text...",
+        "transcriptUrl": "https://thrivefl.blob.core.windows.net/transcripts/abc123.json",  // Optional - Azure Blob URL
         "title": "Sermon Title",
         "passageRef": "John 3:16",
         "audioUrl": "https://thrive-audio.s3.amazonaws.com/2025/file.mp3",  // Optional
@@ -650,6 +655,7 @@ def lambda_handler(event, context):
     """
     message_id = event.get('messageId')
     transcript = event.get('transcript', '')
+    transcript_url = event.get('transcriptUrl')  # Azure Blob URL
     title = event.get('title', '')
     passage_ref = event.get('passageRef', '')
     audio_url = event.get('audioUrl')
@@ -687,7 +693,7 @@ def lambda_handler(event, context):
         client = get_mongodb_client()
         db = client[DB_NAME]
 
-        success = update_sermon_message(db, message_id, summary, tags, waveform_data)
+        success = update_sermon_message(db, message_id, summary, tags, waveform_data, transcript_url)
 
         if success:
             return {
@@ -697,6 +703,7 @@ def lambda_handler(event, context):
                     'summary': summary,
                     'tags': tags,
                     'hasWaveform': waveform_data is not None,
+                    'transcriptUrl': transcript_url,
                     'status': 'success'
                 }
             }
