@@ -2,8 +2,12 @@
 Podcast RSS Generator Lambda
 
 Handles two actions:
-- upsert: Add/update a single episode and update RSS XML
+- upsert: Add/update a single episode in MongoDB, then rebuild entire RSS feed
 - rebuild: Regenerate entire RSS feed from PodcastEpisodes collection
+
+Design: MongoDB (PodcastEpisodes collection) is the source of truth. The RSS feed
+is always rebuilt from the database to avoid fragile XML manipulation. This ensures
+data integrity and prevents bugs where updating one episode could corrupt the feed.
 
 Environment Variables:
 - MONGODB_SECRET_ARN: Secrets Manager ARN for MongoDB URI
@@ -16,7 +20,6 @@ import boto3
 import json
 import pymongo
 import os
-import re
 from datetime import datetime, timezone
 from email.utils import formatdate
 from typing import Optional
@@ -409,21 +412,58 @@ def upload_feed(xml_content: str):
 
 
 # =============================================================================
-# UPSERT ACTION - Update single episode in existing feed
+# RSS GENERATION - Always rebuilds from MongoDB (source of truth)
+# =============================================================================
+
+def generate_rss_feed(db) -> tuple[str, int]:
+    """
+    Generate RSS XML from all episodes in PodcastEpisodes collection.
+
+    This is the single source of RSS generation. It queries all episodes
+    from MongoDB and builds the complete RSS XML. Both upsert and rebuild
+    actions use this function after their respective CRUD operations.
+
+    Returns:
+        tuple: (rss_xml_string, episode_count)
+    """
+    # Query all episodes with valid audio, sorted newest first
+    episodes = list(db['PodcastEpisodes'].find(
+        {'audioUrl': {'$exists': True, '$nin': [None, '']}},
+        sort=[('pubDate', pymongo.DESCENDING)]
+    ))
+
+    print(f"Generating RSS feed with {len(episodes)} episodes")
+
+    # Build RSS XML
+    last_build = format_rfc2822_date(datetime.now(timezone.utc))
+    header = CHANNEL_HEADER.format(
+        year=datetime.now().year,
+        last_build_date=last_build
+    )
+
+    items = [build_item_xml(episode) for episode in episodes]
+    full_xml = header + '\n'.join(items) + '\n' + CHANNEL_FOOTER
+
+    return full_xml, len(episodes)
+
+
+# =============================================================================
+# UPSERT ACTION - CRUD on PodcastEpisodes, then regenerate RSS
 # =============================================================================
 
 def upsert_episode(db, episode_data: dict) -> dict:
     """
-    Add or update a single episode in the RSS feed.
-    1. Validate episode has audio (skip if not playable)
-    2. Generate description if transcript provided but no description
-    3. Upsert to PodcastEpisodes collection
-    4. Update RSS XML (find by GUID, replace or append)
+    Add or update a single episode in PodcastEpisodes collection, then regenerate RSS.
+
+    Pattern:
+    1. Validate and prepare episode data
+    2. Upsert to PodcastEpisodes (CRUD)
+    3. Regenerate entire RSS from MongoDB (source of truth)
     """
     message_id = episode_data.get('messageId')
     audio_url = episode_data.get('audioUrl')
 
-    # Early validation: Skip episodes without audio - they can't be played
+    # Validation: Skip episodes without audio - they can't be played
     if not audio_url:
         print(f"Skipping episode {message_id} - no audio URL")
         return {'action': 'upsert', 'messageId': message_id, 'status': 'skipped', 'reason': 'no_audio'}
@@ -440,111 +480,53 @@ def upsert_episode(db, episode_data: dict) -> dict:
     # Remove transcript before saving - it's huge and only needed for description generation
     episode_data.pop('transcript', None)
 
-    # CRITICAL: Ensure pubDate is a proper datetime object, not a string!
-    # MongoDB sorts datetime objects chronologically, but sorts strings lexicographically.
-    # This breaks RSS feed ordering if pubDate is stored as a string.
+    # Ensure pubDate is a proper datetime (MongoDB sorts these correctly)
     if 'pubDate' in episode_data:
         episode_data['pubDate'] = ensure_datetime(episode_data['pubDate'])
         if episode_data['pubDate'] is None:
             print(f"Warning: Could not parse pubDate for episode {message_id}")
 
-    # Add createdAt if new (also ensure it's a datetime)
+    # Set createdAt timestamp
     if 'createdAt' not in episode_data:
         episode_data['createdAt'] = datetime.now(timezone.utc)
     else:
         episode_data['createdAt'] = ensure_datetime(episode_data['createdAt']) or datetime.now(timezone.utc)
 
-    # Upsert to MongoDB
+    # CRUD: Upsert to PodcastEpisodes collection
     db['PodcastEpisodes'].update_one(
         {'messageId': message_id},
         {'$set': episode_data},
         upsert=True
     )
-    print(f"Upserted episode {message_id} to MongoDB")
+    print(f"Upserted episode {message_id} to PodcastEpisodes")
 
-    # Get current feed
-    current_feed = get_current_feed()
+    # Generate and upload RSS feed
+    rss_xml, episode_count = generate_rss_feed(db)
+    upload_feed(rss_xml)
 
-    if not current_feed:
-        # No existing feed, do a full rebuild
-        return rebuild_feed(db)
-
-    # Build new item XML
-    new_item = build_item_xml(episode_data)
-    guid = episode_data.get('guid', message_id)
-
-    # Try to find and replace existing item by GUID
-    guid_pattern = rf'<item>.*?<guid[^>]*>{re.escape(guid)}</guid>.*?</item>'
-
-    if re.search(guid_pattern, current_feed, re.DOTALL):
-        # Replace existing item
-        updated_feed = re.sub(guid_pattern, new_item.strip(), current_feed, flags=re.DOTALL)
-        print(f"Replaced existing item with GUID {guid}")
-    else:
-        # Insert new item at the TOP of the items list (newest first)
-        # Items come after all channel metadata - look for first <item> or </channel>
-        if '<item>' in current_feed:
-            # Insert before the first existing item
-            insert_pattern = r'(<item>)'
-            updated_feed = re.sub(insert_pattern, new_item + r'\n\t\t\1', current_feed, count=1)
-        else:
-            # No existing items - insert before </channel>
-            insert_pattern = r'(</channel>)'
-            updated_feed = re.sub(insert_pattern, new_item + r'\n\1', current_feed, count=1)
-        print(f"Appended new item with GUID {guid}")
-
-    # Update lastBuildDate
-    last_build = format_rfc2822_date(datetime.now(timezone.utc))
-    updated_feed = re.sub(
-        r'<lastBuildDate>.*?</lastBuildDate>',
-        f'<lastBuildDate>{last_build}</lastBuildDate>',
-        updated_feed
-    )
-
-    # Upload updated feed
-    upload_feed(updated_feed)
-
-    return {'action': 'upsert', 'messageId': message_id, 'status': 'success'}
+    return {
+        'action': 'upsert',
+        'messageId': message_id,
+        'status': 'success',
+        'episodeCount': episode_count
+    }
 
 
 # =============================================================================
-# REBUILD ACTION - Regenerate entire feed from MongoDB
+# REBUILD ACTION - Just regenerate RSS from MongoDB (no CRUD)
 # =============================================================================
 
 def rebuild_feed(db) -> dict:
     """
     Regenerate entire RSS feed from PodcastEpisodes collection.
-    Used for initial migration or recovery.
+    No CRUD operations - just reads from MongoDB and rebuilds RSS.
     """
-    # Query all episodes, sorted by date descending (newest first)
-    # Only include episodes with valid audio URLs (skip entries without playable content)
-    episodes = list(db['PodcastEpisodes'].find({
-        'audioUrl': {'$exists': True, '$nin': [None, '']}
-    }).sort('pubDate', pymongo.DESCENDING))
-
-    print(f"Rebuilding feed with {len(episodes)} episodes (skipped entries without audio)")
-
-    # Build header
-    last_build = format_rfc2822_date(datetime.now(timezone.utc))
-    header = CHANNEL_HEADER.format(
-        year=datetime.now().year,
-        last_build_date=last_build
-    )
-
-    # Build all items
-    items = []
-    for episode in episodes:
-        items.append(build_item_xml(episode))
-
-    # Combine into full XML
-    full_xml = header + '\n'.join(items) + '\n' + CHANNEL_FOOTER
-
-    # Upload to S3
-    upload_feed(full_xml)
+    rss_xml, episode_count = generate_rss_feed(db)
+    upload_feed(rss_xml)
 
     return {
         'action': 'rebuild',
-        'episodeCount': len(episodes),
+        'episodeCount': episode_count,
         'status': 'success'
     }
 
