@@ -26,7 +26,7 @@ import pymongo
 import os
 import tempfile
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, Callable
+from typing import Optional, Dict, Any, Callable, Tuple
 from bson import ObjectId
 
 # Configuration
@@ -39,7 +39,7 @@ DB_NAME = 'SermonSeries'
 AZURE_STORAGE_ACCOUNT = os.environ.get('AZURE_STORAGE_ACCOUNT', 'thrivefl')
 AZURE_STORAGE_CONTAINER = os.environ.get('AZURE_STORAGE_CONTAINER', 'transcripts')
 
-# Sermon Notes & Study Guide configuration (using GPT-4.1 via Azure OpenAI)
+# Sermon Notes & Study Guide configuration (using gpt-4o via Azure OpenAI)
 
 # AWS clients
 s3 = boto3.client('s3')
@@ -121,8 +121,8 @@ def get_chat_model_name() -> str:
     """Get the chat model/deployment name for sermon notes/study guide generation."""
     provider = os.environ.get('OPENAI_PROVIDER', 'azure')
     if provider == 'azure':
-        # Azure deployment name - GPT-4.1 for high-quality generation
-        return os.environ.get('AZURE_CHAT_DEPLOYMENT', 'gpt-4.1')
+        # Azure deployment name - gpt-4o for high-quality generation
+        return os.environ.get('AZURE_CHAT_DEPLOYMENT', 'gpt-4o')
     else:
         # Public OpenAI model
         return os.environ.get('OPENAI_CHAT_MODEL', 'gpt-4o-mini')
@@ -305,15 +305,18 @@ def transcribe_audio(audio_path: str) -> Optional[str]:
 # =============================================================================
 
 def build_notes_prompt(transcript: str, metadata: Dict[str, Any]) -> str:
-    """Build the sermon notes generation prompt."""
-    return f'''You are a ministry assistant helping create sermon notes for church members. Your job is to distill a sermon transcript into shareable, practical notes.
+    """Build the sermon notes generation prompt (aligned with TranscriptBlob schema)."""
+    return f'''You are a ministry assistant helping create sermon notes for church members. Your job is to distill a sermon transcript into shareable, practical notes that sound like this specific message, not a generic sermon.
 
 CRITICAL RULES:
-1. ONLY include scripture references that the speaker explicitly mentioned or read
-2. Quotes must be ACTUAL phrases from the sermon (you may clean up filler words)
-3. Key points should use the speaker's own framework/outline when apparent
-4. Summary should capture the sermon's heart, not just topics covered
-5. Application points should be specific actions, not vague encouragements
+1. ONLY include scripture references that the speaker explicitly mentioned or read in the transcript
+2. Quotes must be ACTUAL phrases from the sermon (you may clean up filler words, but the core wording must appear in the transcript)
+3. Key points should use the speaker's own framework/outline and language when apparent
+4. The summary should speak directly to the reader in the PRESENT tense, capturing the sermon's heart and unique angle (for example, "Words are powerful, shaping your life and relationships"), not just list topics or say "This sermon was about..."
+5. Application points must be specific actions, not vague encouragements
+6. If you are unsure whether something was said or which scripture was used, LEAVE IT OUT rather than guessing
+7. Do not mention the name of the speaker, the church, or any other organization - focus on the content of the sermon
+8. Write everything as if you are talking to the reader right now (using "you" and "we"), not reporting on what the speaker did (avoid phrases like "the speaker said" or "in this sermon they talked about...") in summaries, contexts, or details
 
 SERMON METADATA:
 - Title: {metadata.get('title', 'Unknown')}
@@ -323,33 +326,70 @@ SERMON METADATA:
 TRANSCRIPT:
 {transcript}
 
-Generate sermon notes with this structure:
-- mainScripture: The primary passage (e.g., "Galatians 4:1-7")
-- summary: 2-3 sentences capturing the sermon's core message
-- keyPoints: Array of objects with point, scripture (only if quoted), detail
-- quotes: Array of objects with text (actual sermon quotes) and optional context
-- applicationPoints: Array of specific, actionable takeaways
+Generate sermon notes in this exact JSON structure. Do NOT include title, speaker, date, generatedAt, modelUsed, or wordCount fields – the system will add those. Every field must be grounded in the transcript above:
 
-STYLE:
-- 3-5 key points, 2-4 quotes, 2-4 application points
-- Key points as memorable statements, not academic summaries
-- Application points should be concrete actions
+{{
+  "mainScripture": "The primary passage the sermon is based on (e.g., 'Galatians 4:1-7'). Use an empty string if no clear primary passage is given.",
+  "summary": "2-3 sentences that speak directly to the reader in the present tense, capturing the sermon's core message and why it matters right now, written so someone who missed Sunday would still feel personally invited into what God is saying.",
+  "keyPoints": [
+    {{
+      "point": "A clear, memorable statement of the idea using the speaker's own language when possible.",
+      "scripture": "Book Chapter:Verse ONLY if explicitly referenced in the transcript (otherwise an empty string).",
+      "detail": "One sentence of elaboration, written to the reader in the present tense, using the speaker's own explanation from the sermon (for example, 'Our words can shape our lives and the lives of others...')."
+    }}
+  ],
+  "quotes": [
+    {{
+      "text": "An actual memorable line from the sermon (lightly cleaned of filler words only).",
+      "context": "Brief, reader-facing context written in the present tense (for example, how this line helps you see God, yourself, or others differently), or an empty string if not needed. Avoid meta-phrases like 'in this part of the sermon' or 'the speaker was talking about...'."
+    }}
+  ],
+  "applicationPoints": [
+    "Specific, actionable takeaway – what should someone DO this week in response to this sermon?"
+  ]
+}}
 
-Return ONLY valid JSON.'''
+MINIMUM REQUIREMENTS (the validator will reject responses that don't meet these):
+- keyPoints: at least 2 items (every sermon has at least 2 main ideas)
+- quotes: may be empty if no truly quotable lines are present
+- applicationPoints: at least 1 item
+
+STYLE GUIDANCE:
+- Aim for 3–5 keyPoints, 2–4 quotes, and 2–4 applicationPoints when the transcript supports them
+- Write keyPoints as statements someone would remember, not academic summaries
+- Make quotes truly quotable – the kind of line someone might share or recall later
+- ApplicationPoints must be concrete actions (e.g., "Have a conversation with...", "Set aside time to..."), not vague ideas (e.g., "Think about...", "Try to be better...")
+- Do NOT introduce new scriptures, stories, or ideas that are not clearly present in the transcript
+
+Return ONLY a single valid JSON object that matches the structure above.'''
 
 
 def build_study_guide_prompt(transcript: str, metadata: Dict[str, Any]) -> str:
-    """Build the study guide generation prompt."""
-    return f'''You are a thoughtful small group leader preparing a study guide from a sermon. Create engaging discussion material that feels personal and specific to this message.
+    """Build the study guide generation prompt (aligned with TranscriptBlob schema)."""
+    return f'''You are a thoughtful small group leader and devotional writer preparing a study guide from a sermon.
+
+Your goal is to create a short, Scripture-rooted devotional and discussion guide that helps people
+personally encounter Jesus through THIS specific message. The tone should feel like a modern Bible
+reading plan: warm, conversational, reflective, and accessible—not academic, preachy, or assuming
+that people already "know all the church words".
 
 CRITICAL RULES:
 1. Scripture accuracy is paramount:
-   - "directlyQuoted: true" ONLY for passages the speaker read aloud
-   - "directlyQuoted: false" for passages mentioned but not read
-   - Use "additionalStudy" for related passages NOT in the sermon
-2. Questions must reference specific content from THIS sermon
-3. Avoid generic questions that could apply to any sermon
-4. Use the sermon's own illustrations and language
+   - Set "directlyQuoted": true ONLY for passages the speaker actually read aloud in the transcript
+   - Set "directlyQuoted": false for passages the speaker mentioned but did not read
+   - Use the "additionalStudy" section ONLY for related passages NOT mentioned in the sermon but helpful for deeper study
+2. Every question, summary line, and application must clearly flow from THIS sermon (stories, phrases,
+   arguments, scriptures) – not generic Christian ideas
+3. Do not introduce scriptures, stories, or big ideas that are not clearly present in the transcript
+4. Use the sermon's own illustrations and language in your questions and points whenever possible
+5. If you are unsure whether a scripture or idea appeared in the sermon, LEAVE IT OUT rather than guessing
+6. Do not mention the name of the speaker, the church, or any other organization – focus on the content of the sermon
+7. The tone of the devotional should be:
+   - Casual but honoring (you can say "you" and "we")
+   - Thoughtful and honest, never cheesy or overly hyped
+   - Gentle and invitational, not shaming or assuming people are at a certain level of spiritual maturity
+8. Do NOT explicitly mention any app, website, or brand name.
+9. Write in the present tense as if you are talking directly to the reader right now, not merely reporting on what the speaker did (avoid phrases like "the speaker said" or "this passage was used to show" in summaries, contexts, and illustrations).
 
 SERMON METADATA:
 - Title: {metadata.get('title', 'Unknown')}
@@ -359,35 +399,141 @@ SERMON METADATA:
 TRANSCRIPT:
 {transcript}
 
-Generate a study guide with:
-- mainScripture: Primary passage
-- summary: 4-6 sentence overview for someone who missed Sunday
-- keyPoints: Array with point, theologicalContext, scripture, directlyQuoted (boolean)
-- scriptureReferences: Array with reference, context, directlyQuoted (boolean)
-- discussionQuestions: Object with icebreaker (1-2), reflection (2-3), application (2-3) arrays
-- illustrations: Array with summary and point for each story/example used
-- prayerPrompts: 2-3 specific prayer focuses from sermon themes
-- takeHomeChallenges: 2-3 concrete actions for the week
-- additionalStudy: Related topics with scriptures (marked as not directly referenced)
-- estimatedStudyTime: "30-45 minutes" or similar
+Generate a study guide in this exact JSON structure. Do NOT include title, speaker, date, generatedAt,
+modelUsed, or confidence fields – the system will add those.
 
-QUESTION EXAMPLES:
-❌ BAD: "What stood out to you?" / "How can you apply this?"
-✅ GOOD: "The speaker said 'every saint has a past and every sinner has a future.' Which part is harder for you to believe about yourself?"
+MINIMUM REQUIREMENTS (the validator will reject responses that don't meet these):
+- keyPoints: at least 2 items (every sermon has at least 2 main ideas)
+- discussionQuestions.icebreaker: at least 1 item
+- discussionQuestions.reflection: at least 1 item
+- discussionQuestions.application: at least 1 item
+- prayerPrompts: at least 1 item
+- takeHomeChallenges: at least 1 item
+- devotional: required (3–5 paragraphs, approximately 250–400 words)
 
-Return ONLY valid JSON.'''
+Other arrays (illustrations, additionalStudy, scriptureReferences) may be empty if the content isn't clearly present:
+
+{{
+  "mainScripture": "Primary passage for the sermon (or an empty string if unclear).",
+  "summary": "A paragraph (4–6 sentences) that speaks directly to the reader in the present tense, capturing the sermon's message, main argument, and significance in a devotional tone—grounded in Scripture, reflective, and written so someone who missed Sunday still feels invited into what God is saying right now.",
+
+  "keyPoints": [
+    {{
+      "point": "Core idea in simple, memorable language, using the speaker's own phrasing when possible.",
+      "theologicalContext": "1–2 sentences of gentle background that deepen understanding, drawn from the sermon itself and rooted in the passage(s) used.",
+      "scripture": "Reference if applicable (only if the scripture was mentioned).",
+      "directlyQuoted": true
+    }}
+  ],
+
+  "scriptureReferences": [
+    {{
+      "reference": "Book Chapter:Verse (only scriptures that were actually mentioned).",
+      "context": "A short, devotional explanation of what this passage is saying to the reader now (for example, how it calls you to trust, surrender, forgive, or obey), written in the present tense and avoiding meta-phrases like 'used to show' or 'the speaker used this passage to...'.",
+      "directlyQuoted": true
+    }}
+  ],
+
+  "discussionQuestions": {{
+    "icebreaker": [
+      "An easy, relatable question connected to the sermon's theme that everyone can answer without needing Bible knowledge."
+    ],
+    "reflection": [
+      "Questions that invite honest self-examination using specific content from this sermon, phrased gently and without shame."
+    ],
+    "application": [
+      "Questions that move toward concrete, grace-filled next steps (what this could look like in everyday life), clearly tied to this sermon."
+    ]
+  }},
+
+  "illustrations": [
+    {{
+      "summary": "Brief description of a story or example from the sermon, written so the reader can picture it without saying 'the speaker shared...'.",
+      "point": "What that story or example illustrates for the reader's life right now (for example, what it reveals about God, the heart, faith, or relationships), stated in clear, present-tense language."
+    }}
+  ],
+
+  "prayerPrompts": [
+    "Short, specific prayer prompts written in a natural, conversational tone (for example, lines someone could pray after reading this devotional)."
+  ],
+
+  "takeHomeChallenges": [
+    "A concrete, realistic action for the coming week that applies the sermon in everyday life (not just a vague idea)."
+  ],
+
+  "devotional": "A 3–5 paragraph personal devotional (approximately 250–400 words) that helps the reader encounter Jesus through this sermon's message. Write it like a daily devotional reading—warm, reflective, and conversational. Start by grounding the reader in the main Scripture passage, then walk through the sermon's key insight or tension, and close with an invitation to respond personally. Avoid churchy clichés; write as if you're sitting across the table from a friend who genuinely wants to grow but doesn't have all the answers. This should feel like something someone would read with their morning coffee or huddled in a group setting for a Bible study, ready to be moved by the Spirit.",
+
+  "additionalStudy": [
+    {{
+      "topic": "A theme from the sermon worth exploring further.",
+      "scriptures": ["Related passages for deeper study (not necessarily mentioned in the sermon)."],
+      "note": "Briefly explain how these passages connect back to the sermon's core Scripture and themes."
+    }}
+  ],
+
+  "estimatedStudyTime": "Approximate time to complete the guide (e.g., '30–45 minutes')."
+}}
+
+QUESTION QUALITY EXAMPLES:
+
+❌ BAD (generic, could be any sermon):
+- "What stood out to you from this message?"
+- "How can you apply this to your life?"
+- "What is God saying to you?"
+
+✅ GOOD (specific to THIS sermon, devotional in tone):
+- "The speaker said 'every saint has a past and every sinner has a future.' Which part of that statement is harder for you to believe about yourself right now, and why?"
+- "[Replace with a concrete quote or image from THIS sermon] – ask a question that directly builds on it in a gentle, reflective way."
+
+AUTHENTICITY CHECKLIST (for your own internal use):
+- Would a real small group leader or devotional writer who heard THIS sermon ask these questions?
+- Do the questions clearly reference specific content from THIS sermon (not just general ideas)?
+- Do application questions lead to concrete next steps, not vague feelings or pressure?
+- Does the overall guide feel like something a person might read in a daily devotional—rooted in Scripture, honest about real life, and full of grace?
+
+Return ONLY a single valid JSON object that matches the structure above.'''
 
 
-def validate_notes(notes: Dict[str, Any], transcript: str) -> Dict[str, Any]:
+def validate_notes(notes: Dict[str, Any], transcript: str) -> Tuple[bool, str, Dict[str, Any]]:
     """
-    Validate generated notes against transcript.
-    Returns notes with validation metadata.
+    Validate generated notes structure and content against transcript.
+    Returns (is_valid, message, notes_with_validation).
     """
+    # Structural validation (required fields)
+    required_fields = ['mainScripture', 'summary', 'keyPoints', 'quotes', 'applicationPoints']
+    for field in required_fields:
+        if field not in notes:
+            return False, f"Missing required field: {field}", notes
+
+    # Validate keyPoints structure
+    key_points = notes.get('keyPoints', [])
+    if not isinstance(key_points, list) or len(key_points) < 2:
+        return False, "keyPoints must be an array with at least 2 items", notes
+
+    for i, kp in enumerate(key_points):
+        if not isinstance(kp, dict) or 'point' not in kp:
+            return False, f"keyPoints[{i}] must have 'point' field", notes
+
+    # Validate quotes structure
+    quotes = notes.get('quotes', [])
+    if not isinstance(quotes, list):
+        return False, "quotes must be an array", notes
+
+    for i, q in enumerate(quotes):
+        if not isinstance(q, dict) or 'text' not in q:
+            return False, f"quotes[{i}] must have 'text' field", notes
+
+    # Validate applicationPoints
+    app_points = notes.get('applicationPoints', [])
+    if not isinstance(app_points, list) or len(app_points) < 1:
+        return False, "applicationPoints must be an array with at least 1 item", notes
+
+    # Content validation (check against transcript)
     issues = []
     transcript_lower = transcript.lower()
 
     # Check quotes exist in transcript
-    for quote in notes.get('quotes', []):
+    for quote in quotes:
         quote_text = quote.get('text', '').lower()
         # Allow some flexibility for cleaned-up quotes - check first 5 words
         words = quote_text.split()[:5]
@@ -396,7 +542,7 @@ def validate_notes(notes: Dict[str, Any], transcript: str) -> Dict[str, Any]:
             issues.append(f"Quote may not be verbatim: '{quote_text[:50]}...'")
 
     # Check scripture references exist in transcript
-    for point in notes.get('keyPoints', []):
+    for point in key_points:
         scripture = point.get('scripture', '')
         if scripture:
             book = scripture.split()[0].lower() if scripture else ''
@@ -404,6 +550,7 @@ def validate_notes(notes: Dict[str, Any], transcript: str) -> Dict[str, Any]:
                 issues.append(f"Scripture '{scripture}' not found in transcript")
 
     notes['_validation'] = {
+        'passed': True,
         'issues': issues,
         'validated': len(issues) == 0
     }
@@ -411,13 +558,41 @@ def validate_notes(notes: Dict[str, Any], transcript: str) -> Dict[str, Any]:
     if issues:
         print(f"Notes validation warnings: {issues}")
 
-    return notes
+    return True, "Valid", notes
 
 
-def validate_study_guide(guide: Dict[str, Any], transcript: str) -> Dict[str, Any]:
+def validate_study_guide(guide: Dict[str, Any], transcript: str) -> Tuple[bool, str, Dict[str, Any]]:
     """
-    Validate study guide against transcript.
+    Validate study guide structure and content against transcript.
+    Returns (is_valid, message, guide_with_validation).
     """
+    # Structural validation (required fields)
+    required_fields = ['mainScripture', 'summary', 'keyPoints', 'scriptureReferences',
+                       'discussionQuestions', 'prayerPrompts', 'takeHomeChallenges', 'devotional']
+    for field in required_fields:
+        if field not in guide:
+            return False, f"Missing required field: {field}", guide
+
+    # Validate discussionQuestions structure
+    dq = guide.get('discussionQuestions', {})
+    if not isinstance(dq, dict):
+        return False, "discussionQuestions must be an object", guide
+
+    for category in ['icebreaker', 'reflection', 'application']:
+        if category not in dq or not isinstance(dq[category], list):
+            return False, f"discussionQuestions.{category} must be an array", guide
+
+    # Validate keyPoints
+    key_points = guide.get('keyPoints', [])
+    if not isinstance(key_points, list) or len(key_points) < 2:
+        return False, "keyPoints must be an array with at least 2 items", guide
+
+    # Validate devotional (required, non-empty string)
+    devotional = guide.get('devotional', '')
+    if not isinstance(devotional, str) or len(devotional.strip()) < 100:
+        return False, "devotional must be a non-empty string with at least 100 characters", guide
+
+    # Content validation (check against transcript)
     issues = []
     transcript_lower = transcript.lower()
 
@@ -430,6 +605,7 @@ def validate_study_guide(guide: Dict[str, Any], transcript: str) -> Dict[str, An
                 issues.append(f"Marked as quoted but not found: '{reference}'")
 
     guide['_validation'] = {
+        'passed': True,
         'issues': issues,
         'validated': len(issues) == 0
     }
@@ -437,12 +613,17 @@ def validate_study_guide(guide: Dict[str, Any], transcript: str) -> Dict[str, An
     if issues:
         print(f"Study guide validation warnings: {issues}")
 
-    return guide
+    return True, "Valid", guide
 
 
 def assess_confidence(guide: Dict[str, Any], transcript: str) -> Dict[str, str]:
     """
     Assess confidence in generated content by checking scripture references against transcript.
+
+    Returns confidence levels:
+    - high: >80% of scriptures found in transcript
+    - medium: 50-80% of scriptures found
+    - low: <50% of scriptures found (indicates potential hallucination)
     """
     transcript_lower = transcript.lower()
 
@@ -451,11 +632,22 @@ def assess_confidence(guide: Dict[str, Any], transcript: str) -> Dict[str, str]:
     found_count = 0
     for ref in scriptures:
         # Simple check - see if the book name appears in transcript
-        book_name = ref.get('reference', '').split()[0].lower()
-        if book_name in transcript_lower:
+        book_name = ref.get('reference', '').split()[0].lower() if ref.get('reference') else ''
+        if book_name and book_name in transcript_lower:
             found_count += 1
 
-    scripture_accuracy = "high" if len(scriptures) == 0 or found_count / len(scriptures) > 0.8 else "medium"
+    # Calculate scripture accuracy with three levels
+    if len(scriptures) == 0:
+        scripture_accuracy = "high"
+    else:
+        ratio = found_count / len(scriptures)
+        if ratio > 0.8:
+            scripture_accuracy = "high"
+        elif ratio >= 0.5:
+            scripture_accuracy = "medium"
+        else:
+            scripture_accuracy = "low"
+            print(f"WARNING: Low scripture accuracy ({found_count}/{len(scriptures)} found)")
 
     # Content coverage - default to high
     content_coverage = "high"
@@ -468,42 +660,64 @@ def assess_confidence(guide: Dict[str, Any], transcript: str) -> Dict[str, str]:
 
 def generate_content(
     prompt: str,
-    validator: Callable[[Dict[str, Any], str], Dict[str, Any]],
-    transcript: str
+    validator: Callable[[Dict[str, Any], str], Tuple[bool, str, Dict[str, Any]]],
+    transcript: str,
+    max_retries: int = 3
 ) -> Optional[Dict[str, Any]]:
     """
-    Generate content with GPT-4.1.
+    Generate content with gpt-4o with validation and retry logic.
     """
     client = get_openai_client()
     model = get_chat_model_name()
 
-    try:
-        print(f"Generating content using {model}")
+    for attempt in range(max_retries):
+        try:
+            print(f"Generating content using {model} (attempt {attempt + 1}/{max_retries})")
 
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.3,
-            response_format={"type": "json_object"}
-        )
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You create sermon notes and study guides strictly from the provided "
+                            "transcript and metadata. You must follow the user's JSON schema "
+                            "exactly, avoid generic or fabricated content, and return a single "
+                            "well-formed JSON object that could be traced back to this specific "
+                            "sermon recording."
+                        ),
+                    },
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                response_format={"type": "json_object"}
+            )
 
-        content = response.choices[0].message.content
+            content = response.choices[0].message.content
+            finish_reason = response.choices[0].finish_reason
 
-        # Parse JSON from response
-        result = parse_json_response(content)
-        if not result:
-            print("Failed to parse JSON response")
-            return None
+            # Parse JSON from response
+            result = parse_json_response(content)
+            if not result:
+                print(f"Failed to parse JSON on attempt {attempt + 1}")
+                print(f"Finish reason: {finish_reason}")
+                print(f"Response length: {len(content) if content else 0} chars")
+                if content:
+                    print(f"First 200 chars: {content[:200]}")
+                    print(f"Last 200 chars: {content[-200:]}")
+                continue
 
-        # Validate
-        validated = validator(result, transcript)
-        return validated
+            # Validate the result
+            is_valid, message, validated = validator(result, transcript)
+            if is_valid:
+                return validated
 
-    except Exception as e:
-        print(f"Generation error: {e}")
-        return None
+            print(f"Validation failed on attempt {attempt + 1}: {message}")
+
+        except Exception as e:
+            print(f"Generation error on attempt {attempt + 1}: {e}")
+
+    return None
 
 
 def parse_json_response(content: str) -> Optional[Dict[str, Any]]:
@@ -594,7 +808,7 @@ def get_blob_service_client():
     global _blob_service_client
 
     if _blob_service_client is None:
-        from azure.storage.blob import BlobServiceClient, ContentSettings, ContentSettings
+        from azure.storage.blob import BlobServiceClient
 
         connection_string = get_azure_storage_connection_string()
         _blob_service_client = BlobServiceClient.from_connection_string(connection_string)
