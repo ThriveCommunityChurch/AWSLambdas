@@ -3,16 +3,20 @@ Transcription Processor Lambda
 
 Entry point for the sermon processing pipeline.
 1. Downloads audio from S3 (to /tmp)
-2. Transcribes with Azure OpenAI Whisper API
+2. Transcribes with Azure Speech-to-Text Fast API (azure) or OpenAI Whisper API (openai)
 3. Uploads transcript to Azure Blob Storage (transcripts container)
 4. Invokes Sermon Lambda with { messageId, transcript, transcriptUrl, title, passageRef }
 5. Invokes Podcast Lambda with { messageId, transcript, title, speaker, audioUrl, ... }
 
 Environment Variables:
 - MONGODB_SECRET_ARN: Secrets Manager ARN for MongoDB URI (to fetch message metadata)
-- OPENAI_SECRET_ARN: Secrets Manager ARN for Azure OpenAI API key (Azure_OpenAI_ApiKey)
+- OPENAI_SECRET_ARN: Secrets Manager ARN for API keys (Azure_OpenAI_ApiKey or OpenAI_ChatCompletions_ApiKey)
 - AZURE_STORAGE_SECRET_ARN: Secrets Manager ARN for Azure Storage credentials
-- WHISPER_DEPLOYMENT_NAME: Azure OpenAI Whisper deployment name (default: whisper)
+- OPENAI_PROVIDER: Provider for AI services - 'azure' or 'openai' (default: azure)
+  - azure: Uses Azure Speech-to-Text Fast Transcription API (synchronous, up to 2hrs/200MB)
+  - openai: Uses OpenAI Whisper API for transcription (requires compression to <25MB)
+- AZURE_SPEECH_ENDPOINT: Azure Speech Services endpoint (default: https://thrive-fl.cognitiveservices.azure.com)
+- AZURE_TRANSCRIPTION_DEPLOYMENT: Azure OpenAI Whisper deployment name (only used when OPENAI_PROVIDER=openai)
 - SERMON_LAMBDA_NAME: Name of the sermon processor Lambda
 - PODCAST_LAMBDA_NAME: Name of the podcast RSS generator Lambda
 - S3_BUCKET: S3 bucket for audio files (default: thrive-audio)
@@ -25,6 +29,7 @@ import json
 import pymongo
 import os
 import tempfile
+import requests
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, Callable, Tuple
 from bson import ObjectId
@@ -38,6 +43,9 @@ DB_NAME = 'SermonSeries'
 # Azure Blob Storage configuration
 AZURE_STORAGE_ACCOUNT = os.environ.get('AZURE_STORAGE_ACCOUNT', 'thrivefl')
 AZURE_STORAGE_CONTAINER = os.environ.get('AZURE_STORAGE_CONTAINER', 'transcripts')
+
+# Azure Speech-to-Text configuration (Fast Transcription API)
+AZURE_SPEECH_ENDPOINT = os.environ.get('AZURE_SPEECH_ENDPOINT', 'https://thrive-fl.cognitiveservices.azure.com')
 
 # Sermon Notes & Study Guide configuration (using gpt-4o via Azure OpenAI)
 
@@ -269,8 +277,91 @@ def compress_audio_for_whisper(audio_path: str) -> Optional[str]:
         return None
 
 
-def transcribe_audio(audio_path: str) -> Optional[str]:
-    """Transcribe audio file using OpenAI or Azure OpenAI transcription API."""
+# =============================================================================
+# AZURE SPEECH-TO-TEXT TRANSCRIPTION (Fast Transcription API)
+# =============================================================================
+
+def transcribe_audio_azure_stt(audio_path: str) -> Optional[str]:
+    """
+    Transcribe audio using Azure Speech-to-Text Fast Transcription API.
+
+    This is a synchronous API that accepts audio directly via multipart form data
+    and returns the transcript immediately. Much faster than batch transcription.
+
+    Supports audio files up to 2 hours and 200MB.
+    """
+    try:
+        # Get API key (same as Azure OpenAI key)
+        api_key = get_openai_api_key()
+
+        # Fast transcription endpoint
+        transcription_url = f"{AZURE_SPEECH_ENDPOINT}/speechtotext/transcriptions:transcribe?api-version=2024-11-15"
+
+        headers = {
+            'Ocp-Apim-Subscription-Key': api_key,
+            'Accept': 'application/json'
+        }
+
+        # Definition for the transcription request
+        definition = json.dumps({
+            'locales': ['en-US'],
+            'profanityFilterMode': 'None'  # Don't mask profanity for sermon transcripts
+        })
+
+        file_size = os.path.getsize(audio_path) / (1024 * 1024)
+        print(f"Starting Azure STT fast transcription ({file_size:.1f} MB)...")
+
+        # Send audio as multipart form data
+        with open(audio_path, 'rb') as audio_file:
+            files = {
+                'audio': (os.path.basename(audio_path), audio_file, 'audio/mpeg'),
+                'definition': (None, definition, 'application/json')
+            }
+
+            response = requests.post(
+                transcription_url,
+                headers=headers,
+                files=files,
+                timeout=600  # 10 minute timeout for long audio
+            )
+
+        if response.status_code != 200:
+            print(f"Azure STT failed: {response.status_code} - {response.text}")
+            return None
+
+        result = response.json()
+
+        # Extract transcript from combinedPhrases
+        combined_phrases = result.get('combinedPhrases', [])
+        if combined_phrases:
+            transcript_text = ' '.join(
+                phrase.get('text', '') for phrase in combined_phrases
+            )
+        else:
+            # Fallback: try to get from phrases
+            phrases = result.get('phrases', [])
+            if phrases:
+                transcript_text = ' '.join(
+                    phrase.get('text', '') for phrase in phrases
+                )
+            else:
+                print("No transcript text found in response")
+                print(f"Response keys: {result.keys()}")
+                return None
+
+        print(f"Azure STT transcription complete: {len(transcript_text)} characters")
+        return transcript_text
+
+    except requests.exceptions.Timeout:
+        print("Azure STT request timed out")
+        return None
+    except Exception as e:
+        print(f"Error in Azure STT transcription: {e}")
+        return None
+
+
+def transcribe_audio_whisper(audio_path: str) -> Optional[str]:
+    """Transcribe audio file using OpenAI Whisper API (public OpenAI or Azure OpenAI Whisper deployment)."""
     compressed_path = None
     try:
         client = get_openai_client()
@@ -287,23 +378,41 @@ def transcribe_audio(audio_path: str) -> Optional[str]:
             compressed_path = transcribe_path
 
         with open(transcribe_path, 'rb') as audio_file:
-            print(f"Starting transcription with {model}...")
+            print(f"Starting transcription with Whisper ({model})...")
             response = client.audio.transcriptions.create(
                 model=model,
                 file=audio_file,
                 response_format="text"
             )
 
-        print(f"Transcription complete: {len(response)} characters")
+        print(f"Whisper transcription complete: {len(response)} characters")
         return response
 
     except Exception as e:
-        print(f"Error transcribing audio: {e}")
+        print(f"Error in Whisper transcription: {e}")
         return None
     finally:
         # Clean up compressed file if we created one
         if compressed_path and os.path.exists(compressed_path):
             os.unlink(compressed_path)
+
+
+def transcribe_audio(audio_path: str) -> Optional[str]:
+    """
+    Transcribe audio file using the configured provider.
+
+    - azure provider: Uses Azure Speech-to-Text Fast API (no compression needed, supports 200MB/2hrs)
+    - openai provider: Uses OpenAI Whisper API (requires compression to <25MB)
+    """
+    provider = os.environ.get('OPENAI_PROVIDER', 'azure')
+    print(f"Transcription provider: {provider}")
+
+    if provider == 'azure':
+        # Use Azure Speech-to-Text Fast API - no compression needed (200MB limit)
+        return transcribe_audio_azure_stt(audio_path)
+    else:
+        # Use OpenAI Whisper API - requires compression for files >25MB
+        return transcribe_audio_whisper(audio_path)
 
 
 # =============================================================================
