@@ -121,11 +121,17 @@ def get_chat_model_name() -> str:
     """Get the chat model/deployment name for sermon notes/study guide generation."""
     provider = os.environ.get('OPENAI_PROVIDER', 'azure')
     if provider == 'azure':
-        # Azure deployment name - gpt-4o for high-quality generation
-        return os.environ.get('AZURE_CHAT_DEPLOYMENT', 'gpt-4o')
+        # Azure deployment name - gpt-5-mini for high-quality generation
+        return os.environ.get('AZURE_CHAT_DEPLOYMENT', 'gpt-5-mini')
     else:
         # Public OpenAI model
-        return os.environ.get('OPENAI_CHAT_MODEL', 'gpt-4o-mini')
+        return os.environ.get('OPENAI_CHAT_MODEL', 'gpt-5-mini')
+
+
+def is_gpt5_model(model_name: str) -> bool:
+    """Check if the model is a GPT-5 series model (which has different API parameters)."""
+    gpt5_prefixes = ('gpt-5', 'o1', 'o3', 'o4')
+    return any(model_name.startswith(prefix) for prefix in gpt5_prefixes)
 
 
 def get_mongodb_client():
@@ -330,7 +336,7 @@ Generate sermon notes in this exact JSON structure. Do NOT include title, speake
 
 {{
   "mainScripture": "The primary passage the sermon is based on (e.g., 'Galatians 4:1-7'). Use an empty string if no clear primary passage is given.",
-  "summary": "2-3 sentences that speak directly to the reader in the present tense, capturing the sermon's core message and why it matters right now, written so someone who missed Sunday would still feel personally invited into what God is saying.",
+  "summary": "2-3 paragraphs (approximately 250 words) that speak directly to the reader in the present tense, capturing the sermon's core message and why it matters right now. IMPORTANT: Separate each paragraph with two newline characters (\\n\\n) so the text is not a wall of text. Write it so someone who missed Sunday would still feel personally invited into what God is saying.",
   "keyPoints": [
     {{
       "point": "A clear, memorable statement of the idea using the speaker's own language when possible.",
@@ -404,12 +410,17 @@ modelUsed, or confidence fields – the system will add those.
 
 MINIMUM REQUIREMENTS (the validator will reject responses that don't meet these):
 - keyPoints: at least 2 items (every sermon has at least 2 main ideas)
-- discussionQuestions.icebreaker: at least 1 item
-- discussionQuestions.reflection: at least 1 item
-- discussionQuestions.application: at least 1 item
-- prayerPrompts: at least 1 item
-- takeHomeChallenges: at least 1 item
-- devotional: required (3–5 paragraphs, approximately 250–400 words)
+- prayerPrompts: at least 2 items
+- takeHomeChallenges: at least 2 items
+- devotional: required (3–5 paragraphs, approximately 600–800 words)
+
+STYLE GUIDANCE (aim for these counts when the sermon content supports them):
+- keyPoints: 3–5 items
+- discussionQuestions.icebreaker: 2–3 questions
+- discussionQuestions.reflection: 2–3 questions
+- discussionQuestions.application: 2–3 questions
+- prayerPrompts: 3–4 prompts
+- takeHomeChallenges: 2–3 challenges
 
 Other arrays (illustrations, additionalStudy, scriptureReferences) may be empty if the content isn't clearly present:
 
@@ -436,13 +447,17 @@ Other arrays (illustrations, additionalStudy, scriptureReferences) may be empty 
 
   "discussionQuestions": {{
     "icebreaker": [
-      "An easy, relatable question connected to the sermon's theme that everyone can answer without needing Bible knowledge."
+      "An easy, relatable question connected to the sermon's theme that everyone can answer without needing Bible knowledge.",
+      "Another accessible opening question that draws people in using everyday experiences related to the topic."
     ],
     "reflection": [
-      "Questions that invite honest self-examination using specific content from this sermon, phrased gently and without shame."
+      "A question that invites honest self-examination using specific content from this sermon, phrased gently and without shame.",
+      "Another reflection question that helps people connect the sermon's message to their own story or struggles.",
+      "A deeper question that explores a specific point, illustration, or scripture from the sermon."
     ],
     "application": [
-      "Questions that move toward concrete, grace-filled next steps (what this could look like in everyday life), clearly tied to this sermon."
+      "A question that moves toward concrete, grace-filled next steps (what this could look like in everyday life), clearly tied to this sermon.",
+      "Another practical question that helps people identify one specific action they can take this week."
     ]
   }},
 
@@ -461,7 +476,7 @@ Other arrays (illustrations, additionalStudy, scriptureReferences) may be empty 
     "A concrete, realistic action for the coming week that applies the sermon in everyday life (not just a vague idea)."
   ],
 
-  "devotional": "A 3–5 paragraph personal devotional (approximately 250–400 words) that helps the reader encounter Jesus through this sermon's message. Write it like a daily devotional reading—warm, reflective, and conversational. Start by grounding the reader in the main Scripture passage, then walk through the sermon's key insight or tension, and close with an invitation to respond personally. Avoid churchy clichés; write as if you're sitting across the table from a friend who genuinely wants to grow but doesn't have all the answers. This should feel like something someone would read with their morning coffee or huddled in a group setting for a Bible study, ready to be moved by the Spirit.",
+  "devotional": "A 4–5 paragraph personal devotional. This is the longest and most substantial section of the study guide—do not cut it short. Each paragraph should be 130–160 words. IMPORTANT: Separate each paragraph with two newline characters (\\n\\n) so the text is not a wall of text. Write it like a daily devotional reading—warm, reflective, and conversational. Do not refer to it as 'this guide' or 'this study' or 'this devotional'—instead, Start by grounding the reader in the main Scripture passage, then walk through the sermon's key insight or tension, and close with an invitation to respond personally. You may incorporate external Scripture references or theologically sound illustrations to support the sermon's main theme and learning outcomes, but ensure everything aligns with orthodox Christian teaching. Avoid churchy clichés; write as if you're sitting across the table from a friend who genuinely wants to grow but doesn't have all the answers. This should feel like something someone would read with their morning coffee or huddled in a group setting for a Bible study, ready to be moved by the Spirit.",
 
   "additionalStudy": [
     {{
@@ -573,7 +588,7 @@ def validate_study_guide(guide: Dict[str, Any], transcript: str) -> Tuple[bool, 
         if field not in guide:
             return False, f"Missing required field: {field}", guide
 
-    # Validate discussionQuestions structure
+    # Validate discussionQuestions structure (no minimum counts - style guidance handles that)
     dq = guide.get('discussionQuestions', {})
     if not isinstance(dq, dict):
         return False, "discussionQuestions must be an object", guide
@@ -586,6 +601,16 @@ def validate_study_guide(guide: Dict[str, Any], transcript: str) -> Tuple[bool, 
     key_points = guide.get('keyPoints', [])
     if not isinstance(key_points, list) or len(key_points) < 2:
         return False, "keyPoints must be an array with at least 2 items", guide
+
+    # Validate prayerPrompts minimum count
+    prayer_prompts = guide.get('prayerPrompts', [])
+    if not isinstance(prayer_prompts, list) or len(prayer_prompts) < 2:
+        return False, "prayerPrompts must be an array with at least 2 items", guide
+
+    # Validate takeHomeChallenges minimum count
+    challenges = guide.get('takeHomeChallenges', [])
+    if not isinstance(challenges, list) or len(challenges) < 2:
+        return False, "takeHomeChallenges must be an array with at least 2 items", guide
 
     # Validate devotional (required, non-empty string)
     devotional = guide.get('devotional', '')
@@ -665,7 +690,7 @@ def generate_content(
     max_retries: int = 3
 ) -> Optional[Dict[str, Any]]:
     """
-    Generate content with gpt-4o with validation and retry logic.
+    Generate content with LLM (gpt-4o or gpt-5-mini) with validation and retry logic.
     """
     client = get_openai_client()
     model = get_chat_model_name()
@@ -674,24 +699,39 @@ def generate_content(
         try:
             print(f"Generating content using {model} (attempt {attempt + 1}/{max_retries})")
 
-            response = client.chat.completions.create(
-                model=model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "You create sermon notes and study guides strictly from the provided "
-                            "transcript and metadata. You must follow the user's JSON schema "
-                            "exactly, avoid generic or fabricated content, and return a single "
-                            "well-formed JSON object that could be traced back to this specific "
-                            "sermon recording."
-                        ),
-                    },
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.3,
-                response_format={"type": "json_object"}
+            # Build the system/developer message
+            system_content = (
+                "You create sermon notes and study guides strictly from the provided "
+                "transcript and metadata. You must follow the user's JSON schema "
+                "exactly, avoid generic or fabricated content, and return a single "
+                "well-formed JSON object that could be traced back to this specific "
+                "sermon recording."
             )
+
+            # GPT-5 models use different parameters than GPT-4o
+            if is_gpt5_model(model):
+                # GPT-5 models: no temperature, use max_completion_tokens, developer role
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "developer", "content": system_content},
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_completion_tokens=16000,
+                    reasoning_effort="low",  # low/medium/high - low is faster and cheaper
+                    response_format={"type": "json_object"}
+                )
+            else:
+                # GPT-4o models: use temperature, system role
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": system_content},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.3,
+                    response_format={"type": "json_object"}
+                )
 
             content = response.choices[0].message.content
             finish_reason = response.choices[0].finish_reason
