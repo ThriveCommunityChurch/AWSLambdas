@@ -374,13 +374,14 @@ def generate_sermon_summary(transcript: str, title: str, passage_ref: str = "") 
         # GPT-5 models use different parameters than GPT-4o
         if is_gpt5_model(model):
             # GPT-5 models: no temperature, use max_completion_tokens, developer role
+            # Reasoning models need more tokens for internal thinking + output
             response = client.chat.completions.create(
                 model=model,
                 messages=[
                     {"role": "developer", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
-                max_completion_tokens=400,
+                max_completion_tokens=1500,
                 reasoning_effort="low"
             )
         else:
@@ -395,7 +396,15 @@ def generate_sermon_summary(transcript: str, title: str, passage_ref: str = "") 
                 temperature=0.45
             )
 
-        summary_text = response.choices[0].message.content.strip()
+        summary_text = response.choices[0].message.content
+        if not summary_text:
+            print(f"Warning: LLM returned empty summary response")
+            print(f"Full response: {response}")
+            print(f"Finish reason: {response.choices[0].finish_reason}")
+            if hasattr(response.choices[0].message, 'refusal') and response.choices[0].message.refusal:
+                print(f"Refusal: {response.choices[0].message.refusal}")
+            return ""
+        summary_text = summary_text.strip()
 
         # Ensure it's a single paragraph (remove any internal line breaks)
         summary_text = " ".join(summary_text.split("\n")).replace("'", "'")
