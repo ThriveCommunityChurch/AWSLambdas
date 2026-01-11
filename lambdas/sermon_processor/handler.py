@@ -475,13 +475,14 @@ def generate_tags(summary_text: str, transcript: str, title: str) -> List[str]:
         # GPT-5 models use different parameters than GPT-4o
         if is_gpt5_model(model):
             # GPT-5 models: no temperature, use max_completion_tokens, developer role
+            # Reasoning models need more tokens for internal thinking + output
             response = client.chat.completions.create(
                 model=model,
                 messages=[
                     {"role": "developer", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
-                max_completion_tokens=100,
+                max_completion_tokens=1000,
                 reasoning_effort="low"
             )
         else:
@@ -496,7 +497,15 @@ def generate_tags(summary_text: str, transcript: str, title: str) -> List[str]:
                 temperature=0.2
             )
 
-        response_text = response.choices[0].message.content.strip()
+        response_text = response.choices[0].message.content
+        if not response_text:
+            print(f"Warning: LLM returned empty response")
+            print(f"Full response: {response}")
+            print(f"Finish reason: {response.choices[0].finish_reason}")
+            if hasattr(response.choices[0].message, 'refusal') and response.choices[0].message.refusal:
+                print(f"Refusal: {response.choices[0].message.refusal}")
+            return []
+        response_text = response_text.strip()
 
         # Remove markdown code blocks if present
         if response_text.startswith("```"):
