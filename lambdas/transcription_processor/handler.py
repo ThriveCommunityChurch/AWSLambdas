@@ -186,16 +186,30 @@ def get_message_metadata(db, message_id: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_existing_transcript(db, message_id: str) -> Optional[str]:
-    """Fetch existing transcript from PodcastEpisodes collection."""
+def get_existing_transcript_from_blob(message_id: str) -> Optional[str]:
+    """Fetch existing transcript from Azure Blob Storage."""
     try:
-        episode = db['PodcastEpisodes'].find_one({'messageId': message_id})
-        if episode and episode.get('transcript'):
-            print(f"Found existing transcript for message {message_id}: {len(episode['transcript'])} chars")
-            return episode['transcript']
+        blob_service = get_blob_service_client()
+        container_client = blob_service.get_container_client(AZURE_STORAGE_CONTAINER)
+        blob_name = f"{message_id}.json"
+        blob_client = container_client.get_blob_client(blob_name)
+
+        # Check if blob exists
+        if not blob_client.exists():
+            print(f"No existing transcript blob for message {message_id}")
+            return None
+
+        # Download and parse the transcript JSON
+        blob_data = blob_client.download_blob().readall()
+        transcript_doc = json.loads(blob_data)
+        transcript = transcript_doc.get('transcript')
+
+        if transcript:
+            print(f"Found existing transcript in blob storage for message {message_id}: {len(transcript)} chars")
+            return transcript
         return None
     except Exception as e:
-        print(f"Error fetching existing transcript: {e}")
+        print(f"Error fetching existing transcript from blob: {e}")
         return None
 
 
@@ -965,12 +979,30 @@ def get_blob_service_client():
     return _blob_service_client
 
 
-def upload_transcript_to_azure(message_id: str, transcript: str, metadata: Dict[str, Any]) -> Optional[str]:
+def upload_transcript_to_azure(
+    message_id: str,
+    transcript: str,
+    metadata: Dict[str, Any],
+    sermon_notes: Optional[Dict[str, Any]] = None,
+    study_guide: Optional[Dict[str, Any]] = None
+) -> Optional[str]:
     """
     Upload transcript JSON to Azure Blob Storage.
 
     Returns the blob URL on success, None on failure.
     Format: https://thrivefl.blob.core.windows.net/transcripts/{messageId}.json
+
+    Output format matches TranscriptBlob.cs and backfill_notes.py:
+    {
+      "messageId": "...",
+      "title": "...",
+      "speaker": "...",
+      "transcript": "...",
+      "wordCount": 5648,
+      "uploadedAt": "2026-01-01T03:23:50.562Z",
+      "notes": { SermonNotesBlob with metadata },
+      "studyGuide": { StudyGuideBlob with metadata }
+    }
     """
     from azure.storage.blob import ContentSettings
 
@@ -979,16 +1011,37 @@ def upload_transcript_to_azure(message_id: str, transcript: str, metadata: Dict[
         container_client = blob_service.get_container_client(AZURE_STORAGE_CONTAINER)
 
         blob_name = f"{message_id}.json"
+        title = metadata.get('title', '')
+        speaker = metadata.get('speaker', '')
+        word_count = len(transcript.split())
+        generated_at = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
 
-        # Create transcript document - keep it simple for querying
+        # Create transcript document with all generated content
         transcript_doc = {
             'messageId': message_id,
-            'title': metadata.get('title', ''),
-            'speaker': metadata.get('speaker', ''),
+            'title': title,
+            'speaker': speaker,
             'transcript': transcript,
-            'wordCount': len(transcript.split()),
-            'uploadedAt': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+            'wordCount': word_count,
+            'uploadedAt': generated_at
         }
+
+        # Include notes with metadata (matches backfill_notes.py format)
+        if sermon_notes:
+            sermon_notes['generatedAt'] = generated_at
+            sermon_notes['modelUsed'] = 'gpt-5-mini'
+            sermon_notes['title'] = title
+            sermon_notes['speaker'] = speaker
+            sermon_notes['wordCount'] = word_count
+            transcript_doc['notes'] = sermon_notes
+
+        # Include study guide with metadata (matches backfill_notes.py format)
+        if study_guide:
+            study_guide['generatedAt'] = generated_at
+            study_guide['modelUsed'] = 'gpt-5-mini'
+            study_guide['title'] = title
+            study_guide['speaker'] = speaker
+            transcript_doc['studyGuide'] = study_guide
 
         blob_client = container_client.get_blob_client(blob_name)
         blob_client.upload_blob(
@@ -1122,12 +1175,12 @@ def lambda_handler(event, context):
         transcript = None
 
         if skip_transcription:
-            # Try to reuse existing transcript from PodcastEpisodes
-            transcript = get_existing_transcript(db, message_id)
+            # Try to reuse existing transcript from Azure Blob Storage
+            transcript = get_existing_transcript_from_blob(message_id)
             if transcript:
                 print(f"Reusing existing transcript ({len(transcript)} chars)")
             else:
-                print("No existing transcript found, will transcribe")
+                print("No existing transcript found in blob storage, will transcribe")
 
         if not transcript:
             # Step 1: Download audio from S3
@@ -1148,16 +1201,7 @@ def lambda_handler(event, context):
                 'body': 'Failed to transcribe audio'
             }
 
-        # Step 3: Upload transcript to Azure Blob Storage
-        transcript_url = None
-        try:
-            transcript_url = upload_transcript_to_azure(message_id, transcript, metadata)
-            if not transcript_url:
-                print("Warning: Failed to upload transcript to Azure, continuing without URL")
-        except Exception as e:
-            print(f"Warning: Azure upload error: {e}, continuing without URL")
-
-        # Step 4: Generate sermon notes and study guide
+        # Step 3: Generate sermon notes and study guide
         sermon_notes = None
         study_guide = None
         try:
@@ -1170,6 +1214,19 @@ def lambda_handler(event, context):
             study_guide = generate_study_guide(transcript, generation_metadata)
         except Exception as e:
             print(f"Warning: Notes/study guide generation error: {e}, continuing without them")
+
+        # Step 4: Upload transcript to Azure Blob Storage (includes notes and study guide)
+        transcript_url = None
+        try:
+            transcript_url = upload_transcript_to_azure(
+                message_id, transcript, metadata,
+                sermon_notes=sermon_notes,
+                study_guide=study_guide
+            )
+            if not transcript_url:
+                print("Warning: Failed to upload transcript to Azure, continuing without URL")
+        except Exception as e:
+            print(f"Warning: Azure upload error: {e}, continuing without URL")
 
         # Step 5: Invoke Sermon Lambda
         # Build list of available transcript features
