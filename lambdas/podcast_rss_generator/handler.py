@@ -105,9 +105,15 @@ def get_chat_model_name() -> str:
     """Get the chat model/deployment name based on provider."""
     provider = os.environ.get('OPENAI_PROVIDER', 'azure')
     if provider == 'azure':
-        return os.environ.get('AZURE_CHAT_DEPLOYMENT', 'gpt-4o')
+        return os.environ.get('AZURE_CHAT_DEPLOYMENT', 'gpt-5-mini')
     else:
-        return os.environ.get('OPENAI_CHAT_MODEL', 'gpt-4o-mini')
+        return os.environ.get('OPENAI_CHAT_MODEL', 'gpt-5-mini')
+
+
+def is_gpt5_model(model_name: str) -> bool:
+    """Check if the model is a GPT-5 series model (which has different API parameters)."""
+    gpt5_prefixes = ('gpt-5', 'o1', 'o3', 'o4')
+    return any(model_name.startswith(prefix) for prefix in gpt5_prefixes)
 
 
 # =============================================================================
@@ -221,7 +227,7 @@ def ensure_datetime(value) -> Optional[datetime]:
 
 def generate_podcast_description(transcript: str, title: str, speaker: str, passage_ref: str = "") -> str:
     """
-    Generate a podcast-friendly description using GPT-4o mini.
+    Generate a podcast-friendly description.
 
     This description is optimized for podcast apps (Apple Podcasts, Spotify, etc.) where
     listeners may be discovering the church for the first time. The tone is welcoming and
@@ -277,15 +283,30 @@ def generate_podcast_description(transcript: str, title: str, speaker: str, pass
         model = get_chat_model_name()
 
         print(f"Generating podcast description with {model}...")
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            max_tokens=500,
-            temperature=0.6
-        )
+
+        # GPT-5 models use different parameters than GPT-4o
+        if is_gpt5_model(model):
+            # GPT-5 models: no temperature, use max_completion_tokens, developer role
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "developer", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                max_completion_tokens=500,
+                reasoning_effort="low"
+            )
+        else:
+            # GPT-4o models: use temperature, system role
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                max_tokens=500,
+                temperature=0.6
+            )
 
         description = response.choices[0].message.content.strip()
         print(f"Podcast description generated: {len(description.split())} words")

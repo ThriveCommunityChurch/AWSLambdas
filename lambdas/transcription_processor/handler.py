@@ -1174,7 +1174,7 @@ def lambda_handler(event, context):
         # Step 5: Invoke Sermon Lambda
         # Build list of available transcript features
         # Note: Feature names must match TRANSCRIPT_FEATURE_TO_INT in sermon_processor
-        available_features = []
+        available_features = ['Transcript']  # Always has transcript - Maps to TranscriptFeature.Transcript (0)
         if sermon_notes:
             available_features.append('Notes')  # Maps to TranscriptFeature.Notes (1)
         if study_guide:

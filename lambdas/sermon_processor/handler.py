@@ -94,9 +94,15 @@ def get_chat_model_name() -> str:
     """Get the chat model/deployment name based on provider."""
     provider = os.environ.get('OPENAI_PROVIDER', 'azure')
     if provider == 'azure':
-        return os.environ.get('AZURE_CHAT_DEPLOYMENT', 'gpt-4o')
+        return os.environ.get('AZURE_CHAT_DEPLOYMENT', 'gpt-5-mini')
     else:
-        return os.environ.get('OPENAI_CHAT_MODEL', 'gpt-4o-mini')
+        return os.environ.get('OPENAI_CHAT_MODEL', 'gpt-5-mini')
+
+
+def is_gpt5_model(model_name: str) -> bool:
+    """Check if the model is a GPT-5 series model (which has different API parameters)."""
+    gpt5_prefixes = ('gpt-5', 'o1', 'o3', 'o4')
+    return any(model_name.startswith(prefix) for prefix in gpt5_prefixes)
 
 
 def get_mongodb_client():
@@ -364,15 +370,30 @@ def generate_sermon_summary(transcript: str, title: str, passage_ref: str = "") 
         model = get_chat_model_name()
 
         print(f"Generating sermon summary with {model}...")
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            max_tokens=400,
-            temperature=0.45
-        )
+
+        # GPT-5 models use different parameters than GPT-4o
+        if is_gpt5_model(model):
+            # GPT-5 models: no temperature, use max_completion_tokens, developer role
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "developer", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                max_completion_tokens=400,
+                reasoning_effort="low"
+            )
+        else:
+            # GPT-4o models: use temperature, system role
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                max_tokens=400,
+                temperature=0.45
+            )
 
         summary_text = response.choices[0].message.content.strip()
 
@@ -394,7 +415,7 @@ def format_tags_for_prompt(tags: List[str]) -> str:
 
 def generate_tags(summary_text: str, transcript: str, title: str) -> List[str]:
     """
-    Generate semantic tags for the sermon using GPT-4o mini.
+    Generate semantic tags for the sermon.
     Uses a hybrid approach: analyzes both the summary (for main themes) and
     transcript excerpt (for comprehensive coverage) to ensure accurate tag selection.
     """
@@ -450,15 +471,31 @@ def generate_tags(summary_text: str, transcript: str, title: str) -> List[str]:
         model = get_chat_model_name()
 
         print(f"Analyzing sermon content (summary + transcript) and applying tags with {model}...")
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            max_tokens=100,
-            temperature=0.2
-        )
+
+        # GPT-5 models use different parameters than GPT-4o
+        if is_gpt5_model(model):
+            # GPT-5 models: no temperature, use max_completion_tokens, developer role
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "developer", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                max_completion_tokens=100,
+                reasoning_effort="low",
+                response_format={"type": "json_object"}
+            )
+        else:
+            # GPT-4o models: use temperature, system role
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                max_tokens=100,
+                temperature=0.2
+            )
 
         response_text = response.choices[0].message.content.strip()
 
