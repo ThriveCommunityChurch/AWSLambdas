@@ -482,8 +482,7 @@ def generate_tags(summary_text: str, transcript: str, title: str) -> List[str]:
                     {"role": "user", "content": user_prompt}
                 ],
                 max_completion_tokens=100,
-                reasoning_effort="low",
-                response_format={"type": "json_object"}
+                reasoning_effort="low"
             )
         else:
             # GPT-4o models: use temperature, system role
