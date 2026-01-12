@@ -100,6 +100,7 @@ Resources:
       Environment:
         Variables:
           S3_BUCKET: thrive-audio
+          SERIES_SUMMARY_LAMBDA_NAME: !Sub series-summary-processor-${Environment}
 
   SermonProcessorLogGroup:
     Type: AWS::Logs::LogGroup

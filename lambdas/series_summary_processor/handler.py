@@ -6,10 +6,19 @@ Invoked when a series EndDate is set (series concluded).
 
 1. Fetches series from SermonSeries collection (get Name)
 2. Fetches all messages from Messages collection where SeriesId matches
-3. Projects only: Title, Summary, Tags, PassageRef (no transcripts/notes)
-4. Builds prompt with series name + message summaries
-5. Calls Azure OpenAI (gpt-5-mini) to generate series summary
-6. Updates SermonSeries.Summary field in MongoDB
+3. Checks that all messages with AudioUrl have a Summary (race condition prevention)
+   - If not ready, returns 202 with pending message IDs
+4. Projects only: Title, Summary, Tags, PassageRef (no transcripts/notes)
+5. Builds prompt with series name + message summaries
+6. Calls Azure OpenAI (gpt-5-mini) to generate series summary
+7. Updates SermonSeries.Summary field in MongoDB
+
+Race Condition Handling:
+- When a series EndDate is set, this Lambda is triggered
+- But transcription/summarization of individual messages may still be in progress
+- Lambda checks if all messages with audio have summaries before proceeding
+- If pending, returns 202 Accepted with list of pending message IDs
+- The caller can retry later or the user can manually trigger from UI
 
 Environment Variables:
 - MONGODB_SECRET_ARN: Secrets Manager ARN for MongoDB URI
@@ -117,17 +126,39 @@ def get_messages_for_series(db, series_id: str) -> List[Dict[str, Any]]:
         messages = list(db[MESSAGES_COLLECTION].find(
             {'SeriesId': series_id},
             {
-                '_id': 0,
+                '_id': 1,
                 'Title': 1,
                 'Summary': 1,
                 'Tags': 1,
-                'PassageRef': 1
+                'PassageRef': 1,
+                'AudioUrl': 1  # Need to check if audio exists but summary doesn't
             }
         ))
         return messages
     except Exception as e:
         print(f"Error fetching messages for series {series_id}: {e}")
         return []
+
+
+def check_messages_ready(messages: List[Dict[str, Any]]) -> tuple[bool, List[str]]:
+    """
+    Check if all messages with audio files have summaries.
+    Returns (is_ready, list_of_pending_message_ids).
+
+    This prevents race condition where series summary is generated
+    before message transcription/summarization completes.
+    """
+    pending = []
+    for msg in messages:
+        audio_url = msg.get('AudioUrl')
+        summary = msg.get('Summary')
+
+        # If message has audio but no summary, transcription hasn't completed
+        if audio_url and not summary:
+            msg_id = str(msg.get('_id', 'unknown'))
+            pending.append(msg_id)
+
+    return (len(pending) == 0, pending)
 
 
 def build_prompt(series_name: str, messages: List[Dict[str, Any]]) -> str:
@@ -283,7 +314,23 @@ def lambda_handler(event, context):
         messages = get_messages_for_series(db, series_id)
         print(f"Found {len(messages)} messages for series")
 
-        # Step 3: Generate summary
+        # Step 3: Check if all messages with audio have summaries (race condition prevention)
+        is_ready, pending_ids = check_messages_ready(messages)
+        if not is_ready:
+            print(f"Series not ready: {len(pending_ids)} messages pending summarization")
+            return {
+                'statusCode': 202,  # Accepted but not processed
+                'body': {
+                    'seriesId': series_id,
+                    'seriesName': series_name,
+                    'status': 'pending',
+                    'reason': 'Messages still being processed',
+                    'pendingMessageIds': pending_ids,
+                    'pendingCount': len(pending_ids)
+                }
+            }
+
+        # Step 4: Generate summary
         summary = generate_series_summary(series_name, messages)
         if not summary:
             return {
@@ -291,7 +338,7 @@ def lambda_handler(event, context):
                 'body': 'Failed to generate summary'
             }
 
-        # Step 4: Update series with summary
+        # Step 5: Update series with summary
         success = update_series_summary(db, series_id, summary)
         if not success:
             return {

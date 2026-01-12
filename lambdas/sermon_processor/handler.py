@@ -6,10 +6,15 @@ Receives transcript and messageId, then:
 2. Generates waveform data (FFmpeg + pure Python RMS) - if audio URL provided
 3. Generates tags (Azure OpenAI gpt-5-mini)
 4. Updates SermonMessages collection in MongoDB
+5. If series has EndDate, invokes Series Summary Lambda (eliminates race condition)
+
+The series summary trigger happens AFTER the message summary is saved to MongoDB,
+ensuring all message summaries are available before generating the series summary.
 
 Environment Variables:
 - MONGODB_SECRET_ARN: Secrets Manager ARN for MongoDB URI
 - OPENAI_SECRET_ARN: Secrets Manager ARN for Azure OpenAI API key (Azure_OpenAI_ApiKey)
+- SERIES_SUMMARY_LAMBDA_NAME: Name of the Series Summary Processor Lambda
 
 Note: Waveform generation requires FFmpeg Lambda Layer. Uses pure Python RMS
 calculation to avoid heavy ML dependencies (librosa, numpy, scipy) that would
@@ -27,9 +32,11 @@ from bson import ObjectId
 # Configuration
 DB_NAME = 'SermonSeries'
 COLLECTION_NAME = 'Messages'
+SERIES_SUMMARY_LAMBDA_NAME = os.environ.get('SERIES_SUMMARY_LAMBDA_NAME', 'series-summary-processor-prod')
 
 # AWS clients
 secrets_client = boto3.client('secretsmanager', region_name='us-east-2')
+lambda_client = boto3.client('lambda', region_name='us-east-2')
 
 # Cache for secrets (Lambda container reuse)
 _secrets_cache = {}
@@ -715,6 +722,62 @@ def update_sermon_message(db, message_id: str, summary: str, tags: List[str],
 
 
 # =============================================================================
+# SERIES SUMMARY TRIGGER
+# =============================================================================
+
+def get_series_id_for_message(db, message_id: str) -> Optional[str]:
+    """Look up the SeriesId for a message from MongoDB."""
+    try:
+        message = db[COLLECTION_NAME].find_one(
+            {'_id': ObjectId(message_id)},
+            {'SeriesId': 1}
+        )
+        if message:
+            return message.get('SeriesId')
+        return None
+    except Exception as e:
+        print(f"Error looking up SeriesId for message {message_id}: {e}")
+        return None
+
+
+def check_series_complete(db, series_id: str) -> bool:
+    """
+    Check if a series has an EndDate set (meaning it's complete/concluded).
+    Used to trigger series summary generation after message processing.
+    """
+    if not series_id:
+        return False
+
+    try:
+        series = db['Series'].find_one(
+            {'_id': ObjectId(series_id)},
+            {'EndDate': 1}
+        )
+        if series and series.get('EndDate'):
+            print(f"Series {series_id} has EndDate, will trigger summary generation")
+            return True
+        return False
+    except Exception as e:
+        print(f"Error checking series EndDate: {e}")
+        return False
+
+
+def invoke_series_summary_lambda(series_id: str) -> bool:
+    """Invoke the Series Summary Processor Lambda asynchronously."""
+    try:
+        response = lambda_client.invoke(
+            FunctionName=SERIES_SUMMARY_LAMBDA_NAME,
+            InvocationType='Event',  # Fire-and-forget
+            Payload=json.dumps({'seriesId': series_id})
+        )
+        print(f"Invoked Series Summary Lambda: {response['StatusCode']}")
+        return response['StatusCode'] == 202
+    except Exception as e:
+        print(f"Error invoking Series Summary Lambda: {e}")
+        return False
+
+
+# =============================================================================
 # LAMBDA HANDLER
 # =============================================================================
 
@@ -780,24 +843,32 @@ def lambda_handler(event, context):
             available_transcript_features
         )
 
-        if success:
-            return {
-                'statusCode': 200,
-                'body': {
-                    'messageId': message_id,
-                    'summary': summary,
-                    'tags': tags,
-                    'hasWaveform': waveform_data is not None,
-                    'blobUrl': blob_url,
-                    'availableTranscriptFeatures': available_transcript_features,
-                    'status': 'success'
-                }
-            }
-        else:
+        if not success:
             return {
                 'statusCode': 404,
                 'body': f'Message not found: {message_id}'
             }
+
+        # After successfully updating the message, check if we should trigger series summary
+        # This happens AFTER message summary is saved, eliminating race conditions
+        series_summary_triggered = False
+        series_id = get_series_id_for_message(db, message_id)
+        if series_id and check_series_complete(db, series_id):
+            series_summary_triggered = invoke_series_summary_lambda(series_id)
+
+        return {
+            'statusCode': 200,
+            'body': {
+                'messageId': message_id,
+                'summary': summary,
+                'tags': tags,
+                'hasWaveform': waveform_data is not None,
+                'blobUrl': blob_url,
+                'availableTranscriptFeatures': available_transcript_features,
+                'seriesSummaryTriggered': series_summary_triggered,
+                'status': 'success'
+            }
+        }
 
     except Exception as e:
         print(f"Error: {str(e)}")
