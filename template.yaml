@@ -132,6 +132,27 @@ Resources:
       LogGroupName: !Sub /aws/lambda/podcast-rss-generator-${Environment}
       RetentionInDays: 14
 
+  # ---------------------------------------------------------------------------
+  # Lambda 4: Series Summary Processor
+  # Generates AI summary for completed sermon series
+  # ---------------------------------------------------------------------------
+  SeriesSummaryProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub series-summary-processor-${Environment}
+      Description: Generates AI summary for completed sermon series
+      Handler: handler.lambda_handler
+      CodeUri: lambdas/series_summary_processor/
+      Timeout: 60
+      MemorySize: 256
+      Role: arn:aws:iam::349570132161:role/podcast-lambda-execution-role
+
+  SeriesSummaryProcessorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/series-summary-processor-${Environment}
+      RetentionInDays: 14
+
 # =============================================================================
 # OUTPUTS
 # =============================================================================
@@ -168,4 +189,15 @@ Outputs:
   PodcastRssGeneratorName:
     Description: Podcast RSS Generator Lambda Name
     Value: !Ref PodcastRssGeneratorFunction
+
+  # Series Summary Lambda
+  SeriesSummaryProcessorArn:
+    Description: Series Summary Processor Lambda ARN
+    Value: !GetAtt SeriesSummaryProcessorFunction.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-SeriesSummaryProcessorArn
+
+  SeriesSummaryProcessorName:
+    Description: Series Summary Processor Lambda Name
+    Value: !Ref SeriesSummaryProcessorFunction
 
