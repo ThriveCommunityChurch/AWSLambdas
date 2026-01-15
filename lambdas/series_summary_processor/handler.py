@@ -124,7 +124,7 @@ def get_messages_for_series(db, series_id: str) -> List[Dict[str, Any]]:
     """Fetch all messages for a series, projecting only needed fields."""
     try:
         messages = list(db[MESSAGES_COLLECTION].find(
-            {'SeriesId': series_id},
+            {'SeriesId': ObjectId(series_id)},
             {
                 '_id': 1,
                 'Title': 1,
