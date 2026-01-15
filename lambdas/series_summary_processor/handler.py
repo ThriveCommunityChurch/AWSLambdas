@@ -137,9 +137,10 @@ def get_messages_for_series(db, series_id: str) -> List[Dict[str, Any]]:
                 'Summary': 1,
                 'Tags': 1,
                 'PassageRef': 1,
+                'Date': 1,
                 'AudioUrl': 1  # Need to check if audio exists but summary doesn't
             }
-        ))
+        ).sort('Date', 1))  # Sort by date ascending (chronological order)
         return messages
     except Exception as e:
         print(f"Error fetching messages for series {series_id}: {e}")
@@ -173,6 +174,13 @@ def build_prompt(series_name: str, messages: List[Dict[str, Any]]) -> str:
     message_summaries = []
     for i, msg in enumerate(messages, 1):
         parts = [f"{i}. \"{msg.get('Title', 'Untitled')}\""]
+        if msg.get('Date'):
+            # Format date for readability
+            date = msg['Date']
+            if hasattr(date, 'strftime'):
+                parts.append(f"   Date: {date.strftime('%B %d, %Y')}")
+            else:
+                parts.append(f"   Date: {date}")
         if msg.get('PassageRef'):
             parts.append(f"   Passage: {msg['PassageRef']}")
         if msg.get('Summary'):
@@ -186,26 +194,14 @@ def build_prompt(series_name: str, messages: List[Dict[str, Any]]) -> str:
 
     messages_text = '\n\n'.join(message_summaries)
 
-    return f"""You are summarizing a sermon series called "{series_name}" for prospective listeners.
+    return f"""Generate a summary of these sermon message summaries for the series "{series_name}".
 
-Message summaries from this series:
+Messages:
 {messages_text}
 
-Generate a summary that:
-- Informs prospective listeners about the series
-- Uses creative, inviting language that encourages listening
-- Challenges them to improve themselves or their faith
-- Keeps language relatable, not complex or academic
-- Focuses on the series as a whole collective unit
-- Emphasizes learning outcomes when completing all messages
-- Speaks directly to the listener ("you")
-- Uses varied phrases - no repetition
+Do not mention anything about dates or times or who the speaker is or anything like that. Just inform a prospective listener about the sermon series. Use creative and inviting language to encourage them to listen and challenge them to improve themselves or their faith. Don't use any complex or academic language, keep the summary relatable and focused on the topic of the series as a whole collective unit focusing on learning outcomes when the user completes the listening session of all messages. Speak as though you are talking directly to the listener, rather than just summarizing a topic. But, use creative phrases - avoid repetitiveness and phrases like "you'll discover", "[series] is a journey through...", "By the end you'll...", "this series invites you...", "You'll rediscover...". Assume the listener is reading many of these at a time and we want to avoid repeating phrases.
 
-DO NOT:
-- Mention dates, times, or speakers
-- Use phrases like: "you'll discover", "[series] is a journey through...", "By the end you'll...", "this series invites you...", "You'll rediscover..."
-
-Output: Single paragraph, under 80 words."""
+Output: Single paragraph. Must be under 80 words."""
 
 
 def generate_series_summary(series_name: str, messages: List[Dict[str, Any]]) -> Optional[str]:
