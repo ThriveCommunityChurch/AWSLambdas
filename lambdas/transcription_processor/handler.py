@@ -179,19 +179,37 @@ def get_message_metadata(db, message_id: str) -> Optional[Dict[str, Any]]:
             'audioDuration': message.get('AudioDuration', 0),
             'date': message.get('Date'),
             'artworkUrl': artwork_url,
-            'seriesId': message.get('SeriesId', '')
+            'seriesId': message.get('SeriesId', ''),
+            'blobUrl': message.get('BlobUrl', '')
         }
     except Exception as e:
         print(f"Error fetching message metadata: {e}")
         return None
 
 
-def get_existing_transcript_from_blob(message_id: str) -> Optional[str]:
-    """Fetch existing transcript from Azure Blob Storage."""
+def get_existing_transcript_from_blob(message_id: str, blob_url: Optional[str] = None) -> Optional[str]:
+    """
+    Fetch existing transcript from Azure Blob Storage.
+
+    If blob_url is provided (from message's BlobUrl field), use it directly.
+    Otherwise, fall back to constructing the blob name from message_id.
+    """
     try:
         blob_service = get_blob_service_client()
         container_client = blob_service.get_container_client(AZURE_STORAGE_CONTAINER)
-        blob_name = f"{message_id}.json"
+
+        # Determine blob name from URL or message_id
+        if blob_url:
+            # Extract blob name from URL
+            # URL format: https://account.blob.core.windows.net/container/messageId.json
+            from urllib.parse import urlparse
+            parsed = urlparse(blob_url)
+            blob_name = parsed.path.split('/')[-1]  # Get filename from path
+            print(f"Using blob name from BlobUrl: {blob_name}")
+        else:
+            blob_name = f"{message_id}.json"
+            print(f"Using default blob name: {blob_name}")
+
         blob_client = container_client.get_blob_client(blob_name)
 
         # Check if blob exists
@@ -1176,7 +1194,9 @@ def lambda_handler(event, context):
 
         if skip_transcription:
             # Try to reuse existing transcript from Azure Blob Storage
-            transcript = get_existing_transcript_from_blob(message_id)
+            # Use the message's BlobUrl if available for accurate lookup
+            blob_url = metadata.get('blobUrl')
+            transcript = get_existing_transcript_from_blob(message_id, blob_url)
             if transcript:
                 print(f"Reusing existing transcript ({len(transcript)} chars)")
             else:
