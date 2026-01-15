@@ -110,6 +110,12 @@ def get_chat_model_name() -> str:
         return os.environ.get('OPENAI_CHAT_MODEL', 'gpt-5-mini')
 
 
+def is_gpt5_model(model_name: str) -> bool:
+    """Check if the model is a GPT-5 series model (which has different API parameters)."""
+    gpt5_prefixes = ('gpt-5', 'o1', 'o3', 'o4')
+    return any(model_name.startswith(prefix) for prefix in gpt5_prefixes)
+
+
 def get_series_by_id(db, series_id: str) -> Optional[Dict[str, Any]]:
     """Fetch series from MongoDB by ID."""
     try:
@@ -211,25 +217,38 @@ def generate_series_summary(series_name: str, messages: List[Dict[str, Any]]) ->
     prompt = build_prompt(series_name, messages)
     print(f"Generating summary for series '{series_name}' with {len(messages)} messages")
 
+    system_content = "You are a creative copywriter for a church, writing engaging summaries that invite people to explore sermon series."
+
     try:
         client = get_openai_client()
         model = get_chat_model_name()
 
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a creative copywriter for a church, writing engaging summaries that invite people to explore sermon series."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            max_tokens=200,
-            temperature=0.7
-        )
+        print(f"Generating series summary with {model}...")
+
+        # GPT-5 models use different parameters than GPT-4o
+        if is_gpt5_model(model):
+            # GPT-5 models: no temperature, use max_completion_tokens, developer role
+            # Reasoning models need more tokens for internal thinking + output
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "developer", "content": system_content},
+                    {"role": "user", "content": prompt}
+                ],
+                max_completion_tokens=800,
+                reasoning_effort="low"
+            )
+        else:
+            # GPT-4o models: use temperature, max_tokens, system role
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_content},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=200,
+                temperature=0.7
+            )
 
         summary = response.choices[0].message.content.strip()
         print(f"Generated summary ({len(summary)} chars): {summary[:100]}...")
