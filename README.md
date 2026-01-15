@@ -1,6 +1,6 @@
 # Thrive Church AWS Lambdas
 
-AWS Lambda functions for Thrive Church automation, including podcast RSS feed generation and sermon processing.
+AWS Lambda functions for Thrive Church automation, including podcast RSS feed generation, sermon processing, and AI-powered content enrichment.
 
 ## Architecture
 
@@ -14,13 +14,25 @@ AWS Lambda functions for Thrive Church automation, including podcast RSS feed ge
 │  (App Runner)    │────▶│  processor           │───▶│                    │
 │                  │     │                      │     │  • Summary (GPT)   │
 │ PodcastLambda    │     │  • Download audio    │     │  • Tags (GPT)      │
-│ Service.cs       │     │  • Whisper API       │     │  • Waveform        │
+│ Service.cs       │     │  • Azure Speech API  │     │  • Waveform        │
 │                  │     │  • Get transcript    │     │  • Update MongoDB  │
-└──────────────────┘     └──────────┬───────────┘     │    SermonMessages  │
+└──────────────────┘     └──────────┬───────────┘     │    Messages        │
+                                    │                 └─────────┬──────────┘
+                                    │                           │
+                                    │                           │ (if series has EndDate)
+                                    │                           ▼
+                                    │                 ┌────────────────────┐
+                                    │                 │  series_summary_   │
+                                    │                 │  processor         │
+                                    │                 │                    │
+                                    │                 │  • Series Summary  │
+                                    │                 │    (GPT)           │
+                                    │                 │  • Update MongoDB  │
+                                    │                 │    Series          │
                                     │                 └────────────────────┘
                                     │
                                     │                 ┌────────────────────┐
-                                    └────────────────▶│  podcast_rss_      |
+                                    └────────────────▶│  podcast_rss_      │
                                                       │  generator         │
                                                       │                    │
                                                       │  • Description(GPT)│
@@ -31,19 +43,30 @@ AWS Lambda functions for Thrive Church automation, including podcast RSS feed ge
                                                       └────────────────────┘
 ```
 
+### Series Summary Flow
+
+When a message is processed by `sermon_processor`, it checks if the message's series has an `EndDate` (indicating the series is complete). If so, it triggers `series_summary_processor` which:
+
+1. Verifies all messages with audio in the series have summaries (race condition protection)
+2. Aggregates all message summaries
+3. Generates a cohesive series-level summary using GPT
+4. Saves the summary to the Series document in MongoDB
+
 ## Lambdas
 
 | Lambda | Purpose |
 |--------|---------|
-| `transcription-processor` | Downloads audio, transcribes with Whisper API, invokes `sermon-processor` and `podcast-rss-generator` |
-| `sermon-processor` | Generates sermon summaries, tags, waveforms |
-| `podcast-rss-generator` | Generates podcast RSS feed from PodcastEpisodes |
+| `transcription-processor` | Downloads audio, transcribes with Azure Speech API, invokes `sermon-processor` and `podcast-rss-generator` |
+| `sermon-processor` | Generates sermon summaries, tags, waveforms. Triggers `series-summary-processor` for completed series |
+| `podcast-rss-generator` | Generates podcast descriptions, updates PodcastEpisodes and RSS XML |
+| `series-summary-processor` | Generates series-level summaries from aggregated message summaries |
 
 ## Project Structure
 
 ```
 AWSLambdas/
 ├── README.md
+├── template.yaml                 # SAM template
 ├── requirements-dev.txt          # Development dependencies
 ├── lambdas/
 │   ├── podcast_rss_generator/
@@ -52,13 +75,20 @@ AWSLambdas/
 │   ├── sermon_processor/
 │   │   ├── handler.py
 │   │   └── requirements.txt
-│   └── transcription_processor/
-│       ├── handler.py
-│       └── requirements.txt
-├── scripts/
-│   └── backlog_import.py         # One-time backlog import script
-└── infrastructure/
-    └── template.yaml             # CloudFormation/SAM template
+│   ├── series_summary_processor/
+│   │   ├── handler.py
+│   │   └── requirements.txt
+│   ├── transcription_processor/
+│   │   ├── handler.py
+│   │   └── requirements.txt
+│   └── shared/                   # Shared utilities
+│       └── ...
+├── scripts/                      # Utility and backfill scripts
+│   └── ...
+├── tests/
+│   └── ...
+└── docs/
+    └── ...
 ```
 
 ## Local Development
@@ -75,18 +105,55 @@ venv\Scripts\activate  # Windows
 pip install -r requirements-dev.txt
 ```
 
-### Environment Variables
-```bash
-MONGODB_URI=mongodb+srv://...
-OPENAI_API_KEY=sk-...
-AWS_REGION=us-east-1
-```
+## Environment Variables
+
+Environment variables are configured in `template.yaml` and injected at runtime. Secrets are stored in AWS Secrets Manager.
+
+### Transcription Processor
+| Variable | Description |
+|----------|-------------|
+| `S3_BUCKET` | S3 bucket for audio files (e.g., `thrive-audio`) |
+| `SERMON_LAMBDA_NAME` | Name of sermon processor Lambda to invoke |
+| `PODCAST_LAMBDA_NAME` | Name of podcast RSS generator Lambda to invoke |
+| `AZURE_STORAGE_ACCOUNT` | Azure Blob Storage account for transcripts |
+| `AZURE_STORAGE_CONTAINER` | Azure container name (e.g., `transcripts`) |
+| `AZURE_SPEECH_ENDPOINT` | Azure Speech-to-Text endpoint |
+
+### Sermon Processor
+| Variable | Description |
+|----------|-------------|
+| `S3_BUCKET` | S3 bucket for audio files |
+| `SERIES_SUMMARY_LAMBDA_NAME` | Name of series summary Lambda to invoke |
+
+### Series Summary Processor
+| Variable | Description |
+|----------|-------------|
+| *(uses Secrets Manager)* | MongoDB URI and OpenAI API key from Secrets Manager |
+
+### Podcast RSS Generator
+| Variable | Description |
+|----------|-------------|
+| `RSS_BUCKET` | S3 bucket for RSS XML file |
+| `RSS_KEY` | S3 key for RSS XML file |
 
 ## Deployment
 
-Each Lambda is deployed independently using [AWS SAM](https://aws.amazon.com/serverless/sam/). See `template.yaml` for details.
+Lambdas are deployed using [AWS SAM](https://aws.amazon.com/serverless/sam/) via GitHub Actions CI/CD.
+
+```bash
+# Validate template
+sam validate
+
+# Build all Lambdas
+sam build
+
+# Deploy (requires AWS credentials)
+sam deploy --guided
+```
+
+See `template.yaml` for full configuration including IAM roles, log groups, and Lambda layers.
 
 ## Related Projects
 
-- [ThriveChurchOfficialAPI](../ThriveChurchOfficialAPI) - Main C# API
-- [Sermon_Summarization_Agent](../Sermon_Summarization_Agent) - Local batch processing (backlog only)
+- [ThriveChurchOfficialAPI](https://github.com/ThriveCommunityChurch/ThriveChurchOfficialAPI) - Main C# API
+- [ThriveAPIMediaTool](https://github.com/ThriveCommunityChurch/ThriveAPIMediaTool) - Admin Tool UI

@@ -733,7 +733,11 @@ def get_series_id_for_message(db, message_id: str) -> Optional[str]:
             {'SeriesId': 1}
         )
         if message:
-            return message.get('SeriesId')
+            series_id = message.get('SeriesId')
+            # Convert ObjectId to string if necessary for JSON serialization
+            if series_id and isinstance(series_id, ObjectId):
+                return str(series_id)
+            return series_id
         return None
     except Exception as e:
         print(f"Error looking up SeriesId for message {message_id}: {e}")
