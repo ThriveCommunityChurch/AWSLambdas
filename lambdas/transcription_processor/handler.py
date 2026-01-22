@@ -465,6 +465,17 @@ CRITICAL RULES:
 7. Do not mention the name of the speaker, the church, or any other organization - focus on the content of the sermon
 8. Write everything as if you are talking to the reader right now (using "you" and "we"), not reporting on what the speaker did (avoid phrases like "the speaker said" or "in this sermon they talked about...") in summaries, contexts, or details
 
+BANNED PHRASES - Do NOT use any of these openings or patterns:
+- "You are invited to..." or "You're invited to..."
+- "This message invites you to..." or "This sermon invites you to..."
+- "You are called to..." as an opening
+- "You are encouraged to..."
+- "You are challenged to..." as an opening
+- Any variation of "invited to" language
+The summary is the lesson itself, not an invitation to learn the lesson. Use direct, imperative language:
+- Instead of "You are invited to stop burning up inside over the success of those who do wrong" → "Stop burning up inside over the success of those who do wrong and reorient your focus toward what lasts: God."
+- Instead of "This message invites you to trust God" → "Trust God with your circumstances—He is working a larger story."
+
 SERMON METADATA:
 - Title: {metadata.get('title', 'Unknown')}
 - Speaker: {metadata.get('speaker', 'Unknown')}
@@ -477,7 +488,7 @@ Generate sermon notes in this exact JSON structure. Do NOT include title, speake
 
 {{
   "mainScripture": "The primary passage the sermon is based on (e.g., 'Galatians 4:1-7'). Use an empty string if no clear primary passage is given.",
-  "summary": "2-3 paragraphs (approximately 250 words) that speak directly to the reader in the present tense, capturing the sermon's core message and why it matters right now. IMPORTANT: Separate each paragraph with two newline characters (\\n\\n) so the text is not a wall of text. Write it so someone who missed Sunday would still feel personally invited into what God is saying.",
+  "summary": "2-3 paragraphs (approximately 250 words) that speak directly to the reader, capturing the sermon's core lesson and what action or perspective shift they should take away. This is NOT an invitation to learn—it IS the lesson. Use imperative, instructional language (e.g., 'Stop burning up inside over the success of those who do wrong and reorient your focus toward what lasts: God.'). IMPORTANT: Separate each paragraph with two newline characters (\\n\\n) so the text is not a wall of text. Do NOT start with 'You are invited to...' or similar passive framing—start with the direct instruction or lesson itself.",
   "keyPoints": [
     {{
       "point": "A clear, memorable statement of the idea using the speaker's own language when possible.",
@@ -534,9 +545,22 @@ CRITICAL RULES:
 7. The tone of the devotional should be:
    - Casual but honoring (you can say "you" and "we")
    - Thoughtful and honest, never cheesy or overly hyped
-   - Gentle and invitational, not shaming or assuming people are at a certain level of spiritual maturity
+   - Direct and engaging, not shaming or assuming people are at a certain level of spiritual maturity
 8. Do NOT explicitly mention any app, website, or brand name.
 9. Write in the present tense as if you are talking directly to the reader right now, not merely reporting on what the speaker did (avoid phrases like "the speaker said" or "this passage was used to show" in summaries, contexts, and illustrations).
+
+BANNED PHRASES - Do NOT use any of these openings or patterns anywhere in the guide:
+- "You are invited to..." or "You're invited to..."
+- "This message invites you to..." or "This sermon invites you to..."
+- "This guide invites you to..." or "This study invites you to..."
+- "You are called to..." as an opening
+- "You are encouraged to..."
+- "You are challenged to..." as an opening
+- Any variation of "invited to" language
+The summary/overview IS the lesson itself, not an invitation to learn the lesson. Use direct, imperative language:
+- Instead of "You are invited to stop living in the burned-out loop of envy" → "Stop living in the burned-out loop of envy and righteous indignation and re-center your attention on the God who delights in you."
+- Instead of "This guide invites you to trust God" → "Trust God with your circumstances—He is working a larger story."
+The reader is already engaged—they're reading it, so they don't need an invitation. Give them the instruction directly.
 
 SERMON METADATA:
 - Title: {metadata.get('title', 'Unknown')}
@@ -567,7 +591,7 @@ Other arrays (illustrations, additionalStudy, scriptureReferences) may be empty 
 
 {{
   "mainScripture": "Primary passage for the sermon (or an empty string if unclear).",
-  "summary": "A paragraph (4–6 sentences) that speaks directly to the reader in the present tense, capturing the sermon's message, main argument, and significance in a devotional tone—grounded in Scripture, reflective, and written so someone who missed Sunday still feels invited into what God is saying right now.",
+  "summary": "A paragraph (4–6 sentences) that speaks directly to the reader, capturing the sermon's core lesson and what action or perspective shift they should take away. This is NOT an invitation to learn—it IS the lesson. Use imperative, instructional language (e.g., 'Stop living in the burned-out loop of envy and righteous indignation and re-center your attention on the God who delights in you.'). Grounded in Scripture, reflective, but direct. Do NOT start with 'You are invited to...' or similar passive framing—start with the direct instruction or lesson itself.",
 
   "keyPoints": [
     {{
@@ -617,7 +641,7 @@ Other arrays (illustrations, additionalStudy, scriptureReferences) may be empty 
     "A concrete, realistic action for the coming week that applies the sermon in everyday life (not just a vague idea)."
   ],
 
-  "devotional": "A 4–5 paragraph personal devotional. This is the longest and most substantial section of the study guide—do not cut it short. Each paragraph should be 130–160 words. IMPORTANT: Separate each paragraph with two newline characters (\\n\\n) so the text is not a wall of text. Write it like a daily devotional reading—warm, reflective, and conversational. Do not refer to it as 'this guide' or 'this study' or 'this devotional'—instead, Start by grounding the reader in the main Scripture passage, then walk through the sermon's key insight or tension, and close with an invitation to respond personally. You may incorporate external Scripture references or theologically sound illustrations to support the sermon's main theme and learning outcomes, but ensure everything aligns with orthodox Christian teaching. Avoid churchy clichés; write as if you're sitting across the table from a friend who genuinely wants to grow but doesn't have all the answers. This should feel like something someone would read with their morning coffee or huddled in a group setting for a Bible study, ready to be moved by the Spirit.",
+  "devotional": "A 4–5 paragraph personal devotional. This is the longest and most substantial section of the study guide—do not cut it short. Each paragraph should be 130–160 words. IMPORTANT: Separate each paragraph with two newline characters (\\n\\n) so the text is not a wall of text. Write it like a daily devotional reading—warm, reflective, and conversational. Do not refer to it as 'this guide' or 'this study' or 'this devotional'. BANNED OPENINGS: Do NOT tell the reader to open their Bible, begin with Scripture, or read the passage. Assume they already have their Bible open and are ready to learn. Avoid openings like 'Open Psalm 37 and let its steady voice...', 'Begin with the words of Psalm 8...', 'Turn to Matthew 2...'. Instead, get straight to the lesson or insight—for example: 'In Psalm 37, the psalmist calls you off the treadmill of envy...' or 'When you actually look—really look—at a star-bespeckled sky...' or 'The magi travel long distances guided by a star, and when they arrive they find a scene nobody in power expected...'. Walk through the sermon's key insight or tension, and close with practical application. You may incorporate external Scripture references or theologically sound illustrations to support the sermon's main theme and learning outcomes, but ensure everything aligns with orthodox Christian teaching. Avoid churchy clichés; write as if you're sitting across the table from a friend who genuinely wants to grow but doesn't have all the answers. This should feel like something someone would read with their morning coffee or huddled in a group setting for a Bible study, ready to be moved by the Spirit.",
 
   "additionalStudy": [
     {{
