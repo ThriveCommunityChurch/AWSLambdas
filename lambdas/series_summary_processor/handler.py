@@ -39,6 +39,9 @@ DB_NAME = 'SermonSeries'
 SERIES_COLLECTION = 'Series'
 MESSAGES_COLLECTION = 'Messages'
 
+# Prompt file path
+SERIES_SUMMARY_PROMPT_FILE = os.path.join(os.path.dirname(__file__), 'prompts', 'series_summary_prompt.txt')
+
 # AWS clients
 secrets_client = boto3.client('secretsmanager', region_name='us-east-2')
 
@@ -168,9 +171,22 @@ def check_messages_ready(messages: List[Dict[str, Any]]) -> tuple[bool, List[str
     return (len(pending) == 0, pending)
 
 
-def build_prompt(series_name: str, messages: List[Dict[str, Any]]) -> str:
-    """Build the prompt for series summary generation."""
-    # Format message summaries
+# =============================================================================
+# PROMPT FILE LOADING
+# =============================================================================
+
+def load_prompt_template(prompt_file: str) -> str:
+    """Load a prompt template from file."""
+    try:
+        with open(prompt_file, 'r', encoding='utf-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        print(f"Error: Prompt file not found: {prompt_file}")
+        raise
+
+
+def format_message_summaries(messages: List[Dict[str, Any]]) -> str:
+    """Format message data for the prompt template."""
     message_summaries = []
     for i, msg in enumerate(messages, 1):
         parts = [f"{i}. \"{msg.get('Title', 'Untitled')}\""]
@@ -192,28 +208,32 @@ def build_prompt(series_name: str, messages: List[Dict[str, Any]]) -> str:
                 parts.append(f"   Topics: {', '.join(str(t) for t in tags)}")
         message_summaries.append('\n'.join(parts))
 
-    messages_text = '\n\n'.join(message_summaries)
+    return '\n\n'.join(message_summaries)
 
-    return f"""Generate a summary of these sermon message summaries for the series "{series_name}".
 
-Messages:
-{messages_text}
-
-Do not mention anything about dates or times or who the speaker is or anything like that. Just inform a prospective listener about the sermon series. Use creative and inviting language to encourage them to listen and challenge them to improve themselves or their faith. Don't use any complex or academic language, keep the summary relatable and focused on the topic of the series as a whole collective unit focusing on learning outcomes when the user completes the listening session of all messages. Speak as though you are talking directly to the listener, rather than just summarizing a topic. But, use creative phrases - avoid repetitiveness and phrases like "you'll discover", "[series] is a journey through...", "By the end you'll...", "this series invites you...", "You'll rediscover...". Assume the listener is reading many of these at a time and we want to avoid repeating phrases.
-
-Output: Single paragraph. Must be under 80 words."""
+def build_series_summary_prompt_from_file(series_name: str, messages: List[Dict[str, Any]]) -> str:
+    """Build the series summary generation prompt from template file."""
+    template = load_prompt_template(SERIES_SUMMARY_PROMPT_FILE)
+    messages_text = format_message_summaries(messages)
+    return template.replace(
+        '{{seriesName}}', series_name
+    ).replace(
+        '{{messageSummaries}}', messages_text
+    )
 
 
 def generate_series_summary(series_name: str, messages: List[Dict[str, Any]]) -> Optional[str]:
-    """Generate series summary using OpenAI."""
+    """
+    Generate series summary using OpenAI.
+    Uses file-based prompt for maintainability and consistency with promptfoo testing.
+    """
     if not messages:
         print(f"No messages found for series '{series_name}', skipping summary generation")
         return None
 
-    prompt = build_prompt(series_name, messages)
+    # Build prompt from file template
+    prompt = build_series_summary_prompt_from_file(series_name, messages)
     print(f"Generating summary for series '{series_name}' with {len(messages)} messages")
-
-    system_content = "You are a creative copywriter for a church, writing engaging summaries that invite people to explore sermon series."
 
     try:
         client = get_openai_client()
@@ -228,18 +248,16 @@ def generate_series_summary(series_name: str, messages: List[Dict[str, Any]]) ->
             response = client.chat.completions.create(
                 model=model,
                 messages=[
-                    {"role": "developer", "content": system_content},
-                    {"role": "user", "content": prompt}
+                    {"role": "developer", "content": prompt}
                 ],
                 max_completion_tokens=800,
                 reasoning_effort="low"
             )
         else:
-            # GPT-4o models: use temperature, max_tokens, system role
+            # GPT-4o models: use temperature, max_tokens, user role for combined prompt
             response = client.chat.completions.create(
                 model=model,
                 messages=[
-                    {"role": "system", "content": system_content},
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=200,

@@ -30,6 +30,10 @@ S3_BUCKET = os.environ.get('S3_BUCKET', 'thrive-audio')
 S3_FEED_KEY = os.environ.get('S3_FEED_KEY', 'feed/rss.xml')
 DB_NAME = 'SermonSeries'
 
+# Prompt file paths
+PROMPTS_DIR = os.path.join(os.path.dirname(__file__), 'prompts')
+PODCAST_DESCRIPTION_PROMPT_FILE = os.path.join(PROMPTS_DIR, 'podcast_description_prompt.txt')
+
 # AWS clients
 s3 = boto3.client('s3')
 secrets_client = boto3.client('secretsmanager', region_name='us-east-2')
@@ -225,6 +229,33 @@ def ensure_datetime(value) -> Optional[datetime]:
     return None
 
 
+# =============================================================================
+# PROMPT FILE LOADING
+# =============================================================================
+
+def load_prompt_template(prompt_file: str) -> str:
+    """Load a prompt template from file."""
+    try:
+        with open(prompt_file, 'r', encoding='utf-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        print(f"Error: Prompt file not found: {prompt_file}")
+        raise
+
+
+def build_podcast_description_prompt(transcript: str, title: str, speaker: str) -> str:
+    """Build the user prompt for podcast description generation."""
+    return (
+        f"SERMON METADATA:\n"
+        f"- Title: {title}\n"
+        f"- Speaker: {speaker}\n\n"
+        f"TRANSCRIPT:\n{transcript}\n\n"
+        f"Generate a podcast description: two paragraphs (130-180 words total). "
+        f"First paragraph names the tension. Second previews the approach and ends with curiosity, not a question. "
+        f"Paragraphs separated by a blank line. Return ONLY the description text."
+    )
+
+
 def generate_podcast_description(transcript: str, title: str, speaker: str, passage_ref: str = "") -> str:
     """
     Generate a podcast-friendly description.
@@ -237,46 +268,11 @@ def generate_podcast_description(transcript: str, title: str, speaker: str, pass
         # Fallback description if no transcript
         return f"Join {speaker} as they share a powerful message titled '{title}'."
 
-    # System prompt tailored for podcast audience - broader, more accessible, and non-repetitive
-    system_prompt = (
-        "You are an expert at writing podcast episode descriptions for a church sermon podcast. "
-        "Your audience is diverse: some are regular church members, but many are people discovering "
-        "this podcast for the first time through Apple Podcasts, Spotify, or other platforms. "
-        "They may be spiritual seekers, people exploring Christianity, or those looking for meaningful "
-        "content during difficult seasons of life.\n\n"
-        "Core requirements:\n"
-        "- Write exactly 2 short paragraphs, separated by a blank line, with a total of about 130-180 words.\n"
-        "- Be warm, welcoming, and accessible to people of all backgrounds, including those who do not attend church.\n"
-        "- Clearly explain what this episode is about and how it approaches its main idea so the listener knows what to expect.\n"
-        "- Avoid insider church language or heavy theological jargon that might alienate newcomers.\n"
-        "- Make it clear what value or kind of help the listener might receive from this episode.\n"
-        "- Do NOT start with phrases like 'In this episode', 'Join us', 'This week', or similar podcast clichés.\n"
-        "- Do NOT mention the church name or assume the listener knows anything about the church.\n"
-        "- Do NOT cite specific Bible verses in the description (the content should speak for itself).\n\n"
-        "Openings and style:\n"
-        "- Lead with the real-life tension, question, or situation the sermon addresses, in language an unchurched person would understand.\n"
-        "- Do NOT begin with overused patterns like: 'In a world...', 'Life often feels...', 'Imagine living...', 'Have you ever felt...', or 'Today, you'll discover...'.\n"
-        "- Avoid repetitive phrases such as ""you'll discover"", ""you'll learn"", or ""this message explores""—use more concrete, specific language instead.\n"
-        "- Use language that resonates with someone who might not attend any church, focusing on relationships, purpose, fear, hope, doubt, joy, pain, and other universal experiences.\n"
-        "- Be genuine and relatable, not preachy, salesy, or clickbait-y.\n"
-        "- The tone should feel like a thoughtful friend recommending something meaningful and honest.\n\n"
-        "Structure and closing:\n"
-        "- In the first paragraph, connect with the listener's world and name the core question, struggle, or promise at the heart of the message.\n"
-        "- In the second paragraph, briefly show how this sermon approaches that theme and what kind of shift, comfort, or challenge the listener might carry away.\n"
-        "- End with a line that creates anticipation or curiosity without using generic questions like 'How will you respond?' or 'What will you do with this?'.\n\n"
-        "Self-check before you answer:\n"
-        "- Re-read your description and remove any mention of 'in this episode', 'this message', 'this sermon', 'this week', or similar meta-language.\n"
-        "- Ensure you did not use banned openings such as 'In a world...', 'Life often feels...', 'Imagine...', 'Have you ever felt...', or 'Today, you'll discover...'.\n"
-        "- Replace any generic patterns like ""you'll discover"" or ""you'll learn"" with more concrete, episode-specific phrasing.\n"
-        "- Confirm the output is exactly 2 paragraphs separated by a single blank line, with no extra commentary before or after."
-    )
+    # Load system prompt from file
+    system_prompt = load_prompt_template(PODCAST_DESCRIPTION_PROMPT_FILE)
 
-    user_prompt = (
-        f"Write a podcast episode description for this sermon.\n\n"
-        f"Title: {title}\n"
-        f"Speaker: {speaker}\n\n"
-        f"Transcript:\n{transcript}"
-    )
+    # Build user prompt with sermon metadata
+    user_prompt = build_podcast_description_prompt(transcript, title, speaker)
 
     try:
         client = get_openai_client()

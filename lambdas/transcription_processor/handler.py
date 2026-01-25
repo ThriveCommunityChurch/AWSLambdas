@@ -49,6 +49,12 @@ AZURE_SPEECH_ENDPOINT = os.environ.get('AZURE_SPEECH_ENDPOINT', 'https://thrive-
 
 # Sermon Notes & Study Guide configuration (using gpt-4o via Azure OpenAI)
 
+# Prompt file paths (relative to handler.py)
+PROMPTS_DIR = os.path.join(os.path.dirname(__file__), 'prompts')
+DEVOTIONAL_PROMPT_FILE = os.path.join(PROMPTS_DIR, 'devotional_prompt.txt')
+STUDY_GUIDE_PROMPT_FILE = os.path.join(PROMPTS_DIR, 'study_guide_prompt.txt')
+NOTES_PROMPT_FILE = os.path.join(PROMPTS_DIR, 'notes_prompt.txt')
+
 # AWS clients
 s3 = boto3.client('s3')
 lambda_client = boto3.client('lambda', region_name='us-east-2')
@@ -451,227 +457,63 @@ def transcribe_audio(audio_path: str) -> Optional[str]:
 # SERMON NOTES & STUDY GUIDE GENERATION
 # =============================================================================
 
-def build_notes_prompt(transcript: str, metadata: Dict[str, Any]) -> str:
-    """Build the sermon notes generation prompt (aligned with TranscriptBlob schema)."""
-    return f'''You are a ministry assistant helping create sermon notes for church members. Your job is to distill a sermon transcript into shareable, practical notes that sound like this specific message, not a generic sermon.
+# =============================================================================
+# PROMPT FILE LOADING
+# =============================================================================
 
-CRITICAL RULES:
-1. ONLY include scripture references that the speaker explicitly mentioned or read in the transcript
-2. Quotes must be ACTUAL phrases from the sermon (you may clean up filler words, but the core wording must appear in the transcript)
-3. Key points should use the speaker's own framework/outline and language when apparent
-4. The summary should speak directly to the reader in the PRESENT tense, capturing the sermon's heart and unique angle (for example, "Words are powerful, shaping your life and relationships"), not just list topics or say "This sermon was about..."
-5. Application points must be specific actions, not vague encouragements
-6. If you are unsure whether something was said or which scripture was used, LEAVE IT OUT rather than guessing
-7. Do not mention the name of the speaker, the church, or any other organization - focus on the content of the sermon
-8. Write everything as if you are talking to the reader right now (using "you" and "we"), not reporting on what the speaker did (avoid phrases like "the speaker said" or "in this sermon they talked about...") in summaries, contexts, or details
-
-BANNED PHRASES - Do NOT use any of these openings or patterns:
-- "You are invited to..." or "You're invited to..."
-- "This message invites you to..." or "This sermon invites you to..."
-- "You are called to..." as an opening
-- "You are encouraged to..."
-- "You are challenged to..." as an opening
-- Any variation of "invited to" language
-The summary is the lesson itself, not an invitation to learn the lesson. Use direct, imperative language:
-- Instead of "You are invited to stop burning up inside over the success of those who do wrong" → "Stop burning up inside over the success of those who do wrong and reorient your focus toward what lasts: God."
-- Instead of "This message invites you to trust God" → "Trust God with your circumstances—He is working a larger story."
-
-SERMON METADATA:
-- Title: {metadata.get('title', 'Unknown')}
-- Speaker: {metadata.get('speaker', 'Unknown')}
-- Date: {metadata.get('date', 'Unknown')}
-
-TRANSCRIPT:
-{transcript}
-
-Generate sermon notes in this exact JSON structure. Do NOT include title, speaker, date, generatedAt, modelUsed, or wordCount fields – the system will add those. Every field must be grounded in the transcript above:
-
-{{
-  "mainScripture": "The primary passage the sermon is based on (e.g., 'Galatians 4:1-7'). Use an empty string if no clear primary passage is given.",
-  "summary": "2-3 paragraphs (approximately 250 words) that speak directly to the reader, capturing the sermon's core lesson and what action or perspective shift they should take away. This is NOT an invitation to learn—it IS the lesson. Use imperative, instructional language (e.g., 'Stop burning up inside over the success of those who do wrong and reorient your focus toward what lasts: God.'). IMPORTANT: Separate each paragraph with two newline characters (\\n\\n) so the text is not a wall of text. Do NOT start with 'You are invited to...' or similar passive framing—start with the direct instruction or lesson itself.",
-  "keyPoints": [
-    {{
-      "point": "A clear, memorable statement of the idea using the speaker's own language when possible.",
-      "scripture": "Book Chapter:Verse ONLY if explicitly referenced in the transcript (otherwise an empty string).",
-      "detail": "One sentence of elaboration, written to the reader in the present tense, using the speaker's own explanation from the sermon (for example, 'Our words can shape our lives and the lives of others...')."
-    }}
-  ],
-  "quotes": [
-    {{
-      "text": "An actual memorable line from the sermon (lightly cleaned of filler words only).",
-      "context": "Brief, reader-facing context written in the present tense (for example, how this line helps you see God, yourself, or others differently), or an empty string if not needed. Avoid meta-phrases like 'in this part of the sermon' or 'the speaker was talking about...'."
-    }}
-  ],
-  "applicationPoints": [
-    "Specific, actionable takeaway – what should someone DO this week in response to this sermon?"
-  ]
-}}
-
-MINIMUM REQUIREMENTS (the validator will reject responses that don't meet these):
-- keyPoints: at least 2 items (every sermon has at least 2 main ideas)
-- quotes: may be empty if no truly quotable lines are present
-- applicationPoints: at least 1 item
-
-STYLE GUIDANCE:
-- Aim for 3–5 keyPoints, 2–4 quotes, and 2–4 applicationPoints when the transcript supports them
-- Write keyPoints as statements someone would remember, not academic summaries
-- Make quotes truly quotable – the kind of line someone might share or recall later
-- ApplicationPoints must be concrete actions (e.g., "Have a conversation with...", "Set aside time to..."), not vague ideas (e.g., "Think about...", "Try to be better...")
-- Do NOT introduce new scriptures, stories, or ideas that are not clearly present in the transcript
-
-Return ONLY a single valid JSON object that matches the structure above.'''
+def load_prompt_template(prompt_file: str) -> str:
+    """Load a prompt template from file."""
+    try:
+        with open(prompt_file, 'r', encoding='utf-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        print(f"Warning: Prompt file not found: {prompt_file}")
+        raise
 
 
-def build_study_guide_prompt(transcript: str, metadata: Dict[str, Any]) -> str:
-    """Build the study guide generation prompt (aligned with TranscriptBlob schema)."""
-    return f'''You are a thoughtful small group leader and devotional writer preparing a study guide from a sermon.
+def build_devotional_prompt(transcript: str, metadata: Dict[str, Any]) -> str:
+    """Build the devotional generation prompt from template file."""
+    template = load_prompt_template(DEVOTIONAL_PROMPT_FILE)
+    return template.replace(
+        '{{title}}', metadata.get('title', 'Unknown')
+    ).replace(
+        '{{speaker}}', metadata.get('speaker', 'Unknown')
+    ).replace(
+        '{{date}}', metadata.get('date', 'Unknown')
+    ).replace(
+        '{{transcript}}', transcript
+    )
 
-Your goal is to create a short, Scripture-rooted devotional and discussion guide that helps people
-personally encounter Jesus through THIS specific message. The tone should feel like a modern Bible
-reading plan: warm, conversational, reflective, and accessible—not academic, preachy, or assuming
-that people already "know all the church words".
 
-CRITICAL RULES:
-1. Scripture accuracy is paramount:
-   - Set "directlyQuoted": true ONLY for passages the speaker actually read aloud in the transcript
-   - Set "directlyQuoted": false for passages the speaker mentioned but did not read
-   - Use the "additionalStudy" section ONLY for related passages NOT mentioned in the sermon but helpful for deeper study
-2. Every question, summary line, and application must clearly flow from THIS sermon (stories, phrases,
-   arguments, scriptures) – not generic Christian ideas
-3. Do not introduce scriptures, stories, or big ideas that are not clearly present in the transcript
-4. Use the sermon's own illustrations and language in your questions and points whenever possible
-5. If you are unsure whether a scripture or idea appeared in the sermon, LEAVE IT OUT rather than guessing
-6. Do not mention the name of the speaker, the church, or any other organization – focus on the content of the sermon
-7. The tone of the devotional should be:
-   - Casual but honoring (you can say "you" and "we")
-   - Thoughtful and honest, never cheesy or overly hyped
-   - Direct and engaging, not shaming or assuming people are at a certain level of spiritual maturity
-8. Do NOT explicitly mention any app, website, or brand name.
-9. Write in the present tense as if you are talking directly to the reader right now, not merely reporting on what the speaker did (avoid phrases like "the speaker said" or "this passage was used to show" in summaries, contexts, and illustrations).
+def build_study_guide_prompt_from_file(transcript: str, metadata: Dict[str, Any], devotional_text: str) -> str:
+    """Build the study guide generation prompt from template file with pre-generated devotional."""
+    template = load_prompt_template(STUDY_GUIDE_PROMPT_FILE)
+    prompt = template.replace(
+        '{{title}}', metadata.get('title', 'Unknown')
+    ).replace(
+        '{{speaker}}', metadata.get('speaker', 'Unknown')
+    ).replace(
+        '{{date}}', metadata.get('date', 'Unknown')
+    ).replace(
+        '{{transcript}}', transcript
+    )
+    # Append the pre-generated devotional as context
+    prompt += f"\n\nPRE-GENERATED DEVOTIONAL (use this exactly as the \"devotional\" field in your JSON output):\n{devotional_text}"
+    return prompt
 
-BANNED PHRASES - Do NOT use any of these openings or patterns anywhere in the guide:
-- "You are invited to..." or "You're invited to..."
-- "This message invites you to..." or "This sermon invites you to..."
-- "This guide invites you to..." or "This study invites you to..."
-- "You are called to..." as an opening
-- "You are encouraged to..."
-- "You are challenged to..." as an opening
-- Any variation of "invited to" language
-The summary/overview IS the lesson itself, not an invitation to learn the lesson. Use direct, imperative language:
-- Instead of "You are invited to stop living in the burned-out loop of envy" → "Stop living in the burned-out loop of envy and righteous indignation and re-center your attention on the God who delights in you."
-- Instead of "This guide invites you to trust God" → "Trust God with your circumstances—He is working a larger story."
-The reader is already engaged—they're reading it, so they don't need an invitation. Give them the instruction directly.
 
-SERMON METADATA:
-- Title: {metadata.get('title', 'Unknown')}
-- Speaker: {metadata.get('speaker', 'Unknown')}
-- Date: {metadata.get('date', 'Unknown')}
-
-TRANSCRIPT:
-{transcript}
-
-Generate a study guide in this exact JSON structure. Do NOT include title, speaker, date, generatedAt,
-modelUsed, or confidence fields – the system will add those.
-
-MINIMUM REQUIREMENTS (the validator will reject responses that don't meet these):
-- keyPoints: at least 2 items (every sermon has at least 2 main ideas)
-- prayerPrompts: at least 2 items
-- takeHomeChallenges: at least 2 items
-- devotional: required (3–5 paragraphs, approximately 600–800 words)
-
-STYLE GUIDANCE (aim for these counts when the sermon content supports them):
-- keyPoints: 3–5 items
-- discussionQuestions.icebreaker: 2–3 questions
-- discussionQuestions.reflection: 2–3 questions
-- discussionQuestions.application: 2–3 questions
-- prayerPrompts: 3–4 prompts
-- takeHomeChallenges: 2–3 challenges
-
-Other arrays (illustrations, additionalStudy, scriptureReferences) may be empty if the content isn't clearly present:
-
-{{
-  "mainScripture": "Primary passage for the sermon (or an empty string if unclear).",
-  "summary": "A paragraph (4–6 sentences) that speaks directly to the reader, capturing the sermon's core lesson and what action or perspective shift they should take away. This is NOT an invitation to learn—it IS the lesson. Use imperative, instructional language (e.g., 'Stop living in the burned-out loop of envy and righteous indignation and re-center your attention on the God who delights in you.'). Grounded in Scripture, reflective, but direct. Do NOT start with 'You are invited to...' or similar passive framing—start with the direct instruction or lesson itself.",
-
-  "keyPoints": [
-    {{
-      "point": "Core idea in simple, memorable language, using the speaker's own phrasing when possible.",
-      "theologicalContext": "1–2 sentences of gentle background that deepen understanding, drawn from the sermon itself and rooted in the passage(s) used.",
-      "scripture": "Reference if applicable (only if the scripture was mentioned).",
-      "directlyQuoted": true
-    }}
-  ],
-
-  "scriptureReferences": [
-    {{
-      "reference": "Book Chapter:Verse (only scriptures that were actually mentioned).",
-      "context": "A short, devotional explanation of what this passage is saying to the reader now (for example, how it calls you to trust, surrender, forgive, or obey), written in the present tense and avoiding meta-phrases like 'used to show' or 'the speaker used this passage to...'.",
-      "directlyQuoted": true
-    }}
-  ],
-
-  "discussionQuestions": {{
-    "icebreaker": [
-      "An easy, relatable question connected to the sermon's theme that everyone can answer without needing Bible knowledge.",
-      "Another accessible opening question that draws people in using everyday experiences related to the topic."
-    ],
-    "reflection": [
-      "A question that invites honest self-examination using specific content from this sermon, phrased gently and without shame.",
-      "Another reflection question that helps people connect the sermon's message to their own story or struggles.",
-      "A deeper question that explores a specific point, illustration, or scripture from the sermon."
-    ],
-    "application": [
-      "A question that moves toward concrete, grace-filled next steps (what this could look like in everyday life), clearly tied to this sermon.",
-      "Another practical question that helps people identify one specific action they can take this week."
-    ]
-  }},
-
-  "illustrations": [
-    {{
-      "summary": "Brief description of a story or example from the sermon, written so the reader can picture it without saying 'the speaker shared...'.",
-      "point": "What that story or example illustrates for the reader's life right now (for example, what it reveals about God, the heart, faith, or relationships), stated in clear, present-tense language."
-    }}
-  ],
-
-  "prayerPrompts": [
-    "Short, specific prayer prompts written in a natural, conversational tone (for example, lines someone could pray after reading this devotional)."
-  ],
-
-  "takeHomeChallenges": [
-    "A concrete, realistic action for the coming week that applies the sermon in everyday life (not just a vague idea)."
-  ],
-
-  "devotional": "A 4–5 paragraph personal devotional. This is the longest and most substantial section of the study guide—do not cut it short. Each paragraph should be 130–160 words. IMPORTANT: Separate each paragraph with two newline characters (\\n\\n) so the text is not a wall of text. Write it like a daily devotional reading—warm, reflective, and conversational. Do not refer to it as 'this guide' or 'this study' or 'this devotional'. BANNED OPENINGS: Do NOT tell the reader to open their Bible, begin with Scripture, or read the passage. Assume they already have their Bible open and are ready to learn. Avoid openings like 'Open Psalm 37 and let its steady voice...', 'Begin with the words of Psalm 8...', 'Turn to Matthew 2...'. Instead, get straight to the lesson or insight—for example: 'In Psalm 37, the psalmist calls you off the treadmill of envy...' or 'When you actually look—really look—at a star-bespeckled sky...' or 'The magi travel long distances guided by a star, and when they arrive they find a scene nobody in power expected...'. Walk through the sermon's key insight or tension, and close with practical application. You may incorporate external Scripture references or theologically sound illustrations to support the sermon's main theme and learning outcomes, but ensure everything aligns with orthodox Christian teaching. Avoid churchy clichés; write as if you're sitting across the table from a friend who genuinely wants to grow but doesn't have all the answers. This should feel like something someone would read with their morning coffee or huddled in a group setting for a Bible study, ready to be moved by the Spirit.",
-
-  "additionalStudy": [
-    {{
-      "topic": "A theme from the sermon worth exploring further.",
-      "scriptures": ["Related passages for deeper study (not necessarily mentioned in the sermon)."],
-      "note": "Briefly explain how these passages connect back to the sermon's core Scripture and themes."
-    }}
-  ],
-
-  "estimatedStudyTime": "Approximate time to complete the guide (e.g., '30–45 minutes')."
-}}
-
-QUESTION QUALITY EXAMPLES:
-
-❌ BAD (generic, could be any sermon):
-- "What stood out to you from this message?"
-- "How can you apply this to your life?"
-- "What is God saying to you?"
-
-✅ GOOD (specific to THIS sermon, devotional in tone):
-- "The speaker said 'every saint has a past and every sinner has a future.' Which part of that statement is harder for you to believe about yourself right now, and why?"
-- "[Replace with a concrete quote or image from THIS sermon] – ask a question that directly builds on it in a gentle, reflective way."
-
-AUTHENTICITY CHECKLIST (for your own internal use):
-- Would a real small group leader or devotional writer who heard THIS sermon ask these questions?
-- Do the questions clearly reference specific content from THIS sermon (not just general ideas)?
-- Do application questions lead to concrete next steps, not vague feelings or pressure?
-- Does the overall guide feel like something a person might read in a daily devotional—rooted in Scripture, honest about real life, and full of grace?
-
-Return ONLY a single valid JSON object that matches the structure above.'''
+def build_notes_prompt_from_file(transcript: str, metadata: Dict[str, Any]) -> str:
+    """Build the sermon notes generation prompt from template file."""
+    template = load_prompt_template(NOTES_PROMPT_FILE)
+    return template.replace(
+        '{{title}}', metadata.get('title', 'Unknown')
+    ).replace(
+        '{{speaker}}', metadata.get('speaker', 'Unknown')
+    ).replace(
+        '{{date}}', metadata.get('date', 'Unknown')
+    ).replace(
+        '{{transcript}}', transcript
+    )
 
 
 def validate_notes(notes: Dict[str, Any], transcript: str) -> Tuple[bool, str, Dict[str, Any]]:
@@ -957,7 +799,7 @@ def parse_json_response(content: str) -> Optional[Dict[str, Any]]:
 def generate_sermon_notes(transcript: str, metadata: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """Generate sermon notes from transcript."""
     print("Generating sermon notes...")
-    prompt = build_notes_prompt(transcript, metadata)
+    prompt = build_notes_prompt_from_file(transcript, metadata)
     notes = generate_content(prompt, validate_notes, transcript)
 
     if notes:
@@ -970,10 +812,103 @@ def generate_sermon_notes(transcript: str, metadata: Dict[str, Any]) -> Optional
     return notes
 
 
+def generate_devotional(transcript: str, metadata: Dict[str, Any], max_retries: int = 3) -> Optional[str]:
+    """
+    Generate devotional text from transcript (first pass of two-pass architecture).
+
+    Returns plain text devotional, not JSON.
+    Validates minimum word count and retries if too short.
+    """
+    client = get_openai_client()
+    model = get_chat_model_name()
+    min_word_count = 600
+
+    base_prompt = build_devotional_prompt(transcript, metadata)
+    previous_word_count = 0  # Track word count from previous attempt for retry message
+
+    for attempt in range(max_retries):
+        try:
+            prompt = base_prompt
+
+            # Add retry instruction if previous attempt was too short
+            if attempt > 0:
+                prompt += f"\n\nIMPORTANT: Your previous response was too short ({previous_word_count} words). Please write a COMPLETE devotional with at least 700 words and 5-6 substantial paragraphs. Do not cut your response short."
+
+            print(f"Generating devotional using {model} (attempt {attempt + 1}/{max_retries})")
+
+            # Build the system/developer message for devotional
+            system_content = (
+                "You are a devotional writer creating contemplative reflections based on sermons. "
+                "Write in third-person authoritative voice like a study Bible note. "
+                "Return ONLY the devotional text, no JSON formatting."
+            )
+
+            # GPT-5 models use different parameters than GPT-4o
+            if is_gpt5_model(model):
+                # GPT-5 models: no temperature, use max_completion_tokens, developer role
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "developer", "content": system_content},
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_completion_tokens=4000,  # Devotional is shorter than full study guide
+                    reasoning_effort="low"
+                )
+            else:
+                # GPT-4o models: use temperature, system role
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": system_content},
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=4000,
+                    temperature=0.7
+                )
+
+            devotional_text = response.choices[0].message.content.strip()
+
+            # Validate word count
+            word_count = len(devotional_text.split())
+            previous_word_count = word_count  # Save for retry message
+            print(f"Devotional word count: {word_count}")
+
+            if word_count >= min_word_count:
+                print(f"Devotional generated successfully ({word_count} words)")
+                return devotional_text
+            else:
+                print(f"Devotional too short ({word_count} words < {min_word_count}), retrying...")
+
+        except Exception as e:
+            print(f"Error generating devotional (attempt {attempt + 1}): {e}")
+            if attempt == max_retries - 1:
+                raise
+
+    print("Failed to generate devotional after all retries")
+    return None
+
+
 def generate_study_guide(transcript: str, metadata: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """Generate study guide from transcript."""
-    print("Generating study guide...")
-    prompt = build_study_guide_prompt(transcript, metadata)
+    """
+    Generate study guide from transcript using two-pass architecture.
+
+    Pass 1: Generate devotional with higher quality/reasoning
+    Pass 2: Generate full study guide with pre-generated devotional as context
+    """
+    print("Generating study guide (two-pass architecture)...")
+
+    # PASS 1: Generate devotional
+    print("Pass 1: Generating devotional...")
+    devotional_text = generate_devotional(transcript, metadata)
+
+    if not devotional_text:
+        print("Failed to generate devotional after retries")
+        return None
+
+    # PASS 2: Generate study guide with devotional as context
+    print("Pass 2: Generating study guide with devotional context...")
+    prompt = build_study_guide_prompt_from_file(transcript, metadata, devotional_text)
     guide = generate_content(prompt, validate_study_guide, transcript)
 
     if guide:
@@ -981,7 +916,7 @@ def generate_study_guide(transcript: str, metadata: Dict[str, Any]) -> Optional[
         guide['confidenceAssessment'] = assess_confidence(guide, transcript)
         # Remove internal validation metadata
         guide.pop('_validation', None)
-        print("Study guide generated successfully")
+        print("Study guide generated successfully (two-pass)")
     else:
         print("Failed to generate study guide after retries")
 
@@ -1286,6 +1221,8 @@ def lambda_handler(event, context):
             'transcript': transcript,
             'blobUrl': transcript_url,  # Azure Blob URL (or None if upload failed)
             'title': metadata.get('title', ''),
+            'speaker': metadata.get('speaker', ''),
+            'date': metadata.get('date', ''),
             'passageRef': metadata.get('passageRef', ''),
             'audioUrl': audio_url,
             'generateWaveform': True,  # Generate waveform from audio

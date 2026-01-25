@@ -34,6 +34,10 @@ DB_NAME = 'SermonSeries'
 COLLECTION_NAME = 'Messages'
 SERIES_SUMMARY_LAMBDA_NAME = os.environ.get('SERIES_SUMMARY_LAMBDA_NAME', 'series-summary-processor-prod')
 
+# Prompt file paths
+PROMPTS_DIR = os.path.join(os.path.dirname(__file__), 'prompts')
+SERMON_SUMMARY_PROMPT_FILE = os.path.join(PROMPTS_DIR, 'sermon_summary_prompt.txt')
+
 # AWS clients
 secrets_client = boto3.client('secretsmanager', region_name='us-east-2')
 lambda_client = boto3.client('lambda', region_name='us-east-2')
@@ -315,62 +319,48 @@ def convert_transcript_features_to_ints(features: List[str]) -> List[int]:
     return int_features
 
 
-def generate_sermon_summary(transcript: str, title: str, passage_ref: str = "") -> str:
+# =============================================================================
+# PROMPT FILE LOADING
+# =============================================================================
+
+def load_prompt_template(prompt_file: str) -> str:
+    """Load a prompt template from file."""
+    try:
+        with open(prompt_file, 'r', encoding='utf-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        print(f"Error: Prompt file not found: {prompt_file}")
+        raise
+
+
+def build_sermon_summary_prompt_from_file(transcript: str, title: str, speaker: str = "", date: str = "") -> str:
+    """Build the sermon summary generation prompt from template file."""
+    template = load_prompt_template(SERMON_SUMMARY_PROMPT_FILE)
+    return template.replace(
+        '{{title}}', title
+    ).replace(
+        '{{speaker}}', speaker
+    ).replace(
+        '{{date}}', date
+    ).replace(
+        '{{transcript}}', transcript
+    )
+
+
+# =============================================================================
+# CONTENT GENERATION
+# =============================================================================
+
+def generate_sermon_summary(transcript: str, title: str, speaker: str = "", date: str = "") -> str:
     """
     Generate a single-paragraph, end-user-friendly summary of the sermon.
-    Uses the sophisticated prompt from the LangGraph agent for high-quality output.
+    Uses file-based prompt for maintainability and consistency with promptfoo testing.
     """
     if not transcript:
         return ""
 
-    # System prompt focuses on varied, listener-centered summaries and avoids overused patterns
-    system_prompt = (
-        "You are an expert at summarizing Christian sermons for church audiences. "
-        "Your task is to create a single-paragraph summary that captures what listeners will experience, "
-        "wrestle with, and take away from the sermon, not a flat recap of the outline.\n\n"
-        "Core requirements:\n"
-        "- Write for listeners of the sermon, speaking directly to \"you\" as an individual, not \"you all\" or \"we the church\".\n"
-        "- Tone: warm, conversational, invitational, and spiritually honest. It can comfort, challenge, or provoke reflection depending on the sermon, but it must not sound like marketing copy.\n"
-        "- The summary must be a single paragraph (no line breaks within the summary) and no more than 120 words. Less is better if you can clearly communicate the core message.\n"
-        "- Do not mention the preacher's name, the church name, sermon series title, or service details.\n"
-        "- Only reference specific Scripture passages if they are essential to the main idea; otherwise focus on the lived implications for the listener.\n\n"
-        "Style and structure:\n"
-        "- Do not talk about \"this message\" or \"this sermon\". Instead, speak directly about what God is doing and what the listener may notice or experience.\n"
-        "- Vary your sentence structure; avoid beginning most sentences with \"You\", \"This\", or \"As you\".\n"
-        "- Use specific, sermon-rooted language (key images, tensions, concrete situations) instead of generic spiritual phrases that could apply to any sermon.\n"
-        "- The summary should feel like a living invitation into the heart of this particular sermon, not a generic devotional thought.\n\n"
-        "Overused openings to avoid in this summary:\n"
-        "- Do NOT start with any of these or close paraphrases:\n"
-        "  - \"In a world\" or \"In a world where...\"\n"
-        "  - \"Life often feels...\" or \"Life can often feel...\"\n"
-        "  - \"Imagine living...\" or \"Imagine a world where...\"\n"
-        "  - \"Have you ever felt...\"\n"
-        "  - \"Today, you'll discover...\" or similar \"Today, you'll...\" openings\n"
-        "  - Stock phrases like \"Emotions are an integral part of our humanity...\"\n"
-        "Begin instead with a sentence that grows directly out of the sermon's core tension or promise.\n\n"
-        "Overused transitions to avoid in this summary:\n"
-        "- Do NOT use any of these phrases or close paraphrases:\n"
-        "  - \"This message invites you to...\" or \"This sermon invites you to...\"\n"
-        "  - \"You'll discover that...\" or \"You'll learn that...\"\n"
-        "  - \"You'll be encouraged to...\" or \"You'll be challenged to...\"\n"
-        "  - \"You are invited to explore...\"\n"
-        "  - \"As you reflect on...\" or \"As you engage with this message...\"\n"
-        "  - \"Ultimately, you'll...\" or \"Ultimately, you will...\"\n"
-        "Instead, describe what the listener may notice, wrestle with, or begin to see using concrete verbs tied to the sermon (for example: confront, trust, risk, lament, forgive, reorder priorities).\n\n"
-        "Closings:\n"
-        "- Do NOT end with a generic rhetorical question like \"How will you respond?\", \"What will you do with this?\", or \"How might this change your life?\".\n"
-        "- End with a specific, sermon-rooted line that names the kind of shift, comfort, or challenge the listener might carry with them.\n\n"
-        "Self-check before you answer:\n"
-        "- Re-read your summary and remove any mention of \"this message\", \"this sermon\", \"today we\", or similar meta-commentary.\n"
-        "- Replace any generic patterns like \"you'll discover\", \"you'll learn\", \"you'll be encouraged\", or \"you'll be challenged\" with more concrete, sermon-specific language.\n"
-        "- Ensure you did NOT start with any banned openings or end with a generic \"How will you respond?\"-type question.\n"
-        "- Confirm the output is a single paragraph under 120 words in plain text."
-    )
-
-    user_prompt = (
-        f"Please summarize the following sermon transcription into a single paragraph "
-        f"that captures its core message and purpose:\n\n{transcript}"
-    )
+    # Build prompt from file template
+    prompt = build_sermon_summary_prompt_from_file(transcript, title, speaker, date)
 
     try:
         client = get_openai_client()
@@ -385,19 +375,17 @@ def generate_sermon_summary(transcript: str, title: str, passage_ref: str = "") 
             response = client.chat.completions.create(
                 model=model,
                 messages=[
-                    {"role": "developer", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
+                    {"role": "developer", "content": prompt}
                 ],
                 max_completion_tokens=1500,
                 reasoning_effort="low"
             )
         else:
-            # GPT-4o models: use temperature, system role
+            # GPT-4o models: use temperature, user role for combined prompt
             response = client.chat.completions.create(
                 model=model,
                 messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
+                    {"role": "user", "content": prompt}
                 ],
                 max_tokens=400,
                 temperature=0.45
@@ -795,6 +783,8 @@ def lambda_handler(event, context):
         "transcript": "Full transcript text...",
         "blobUrl": "https://thrivefl.blob.core.windows.net/transcripts/abc123.json",  // Optional - Azure Blob URL
         "title": "Sermon Title",
+        "speaker": "Pastor Name",
+        "date": "2025-01-19T00:00:00",  // ISO format date string
         "passageRef": "John 3:16",
         "audioUrl": "https://thrive-audio.s3.amazonaws.com/2025/file.mp3",  // Optional
         "generateWaveform": true,  // Optional, defaults to false
@@ -805,6 +795,8 @@ def lambda_handler(event, context):
     transcript = event.get('transcript', '')
     blob_url = event.get('blobUrl')  # Azure Blob URL
     title = event.get('title', '')
+    speaker = event.get('speaker', '')
+    date = event.get('date', '')
     passage_ref = event.get('passageRef', '')
     audio_url = event.get('audioUrl')
     generate_waveform = event.get('generateWaveform', False)
@@ -828,7 +820,7 @@ def lambda_handler(event, context):
         print(f"Processing sermon: {message_id} - {title}")
 
         # Step 1: Generate summary first
-        summary = generate_sermon_summary(transcript, title, passage_ref)
+        summary = generate_sermon_summary(transcript, title, speaker, date)
 
         # Step 2: Generate tags using BOTH summary and transcript (hybrid approach)
         # This provides better context - summary for main themes, transcript for comprehensive coverage

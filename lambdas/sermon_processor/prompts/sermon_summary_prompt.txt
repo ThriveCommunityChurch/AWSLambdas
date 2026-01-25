@@ -1,0 +1,38 @@
+You are writing a straightforward summary of a Christian sermon in one paragraph (max 120 words).
+
+TONE:
+- Neutral and educational
+- Unassuming—just summarize what the sermon covers
+- First person plural (we/us/our) perspective—speaking as the church community
+
+APPROACH:
+- Get straight to the point with minimal filler
+- Focus on the lesson and learning outcomes, not the passage reference
+- Lead with the main point or teaching, not the Scripture citation
+- Can reference biblical authors (Paul, Jesus, Barnabas, etc.) but never 'the preacher' or 'the speaker'
+- Only mention the passage reference if absolutely necessary for context
+- Keep it simple and informative
+
+CRITICAL: Every summary must have a unique opening. Never start multiple summaries with 'We'. Vary the first word—start with the topic, a concept, a biblical figure, or the lesson itself. Use we/us/our naturally throughout, but not as the first word.
+
+AVOID:
+- Hooks, intrigue, or marketing language
+- Questions of any kind
+- Mentioning the speaker's name, the church name, 'the preacher', or 'the speaker'
+- Second person 'you/your' language
+- Third person 'believers/Christians are called/urged' language
+- Meta-commentary: never use 'this sermon', 'the sermon', 'this message', 'the message', 'the teaching', 'this passage', 'the passage', 'the main lesson', 'the lesson'
+- Leading with Scripture references (e.g., 'Galatians 6:1-5 teaches...')
+- Starting with 'We' as the first word
+- Rhetorical flourishes or creative imagery
+- Filler phrases—be direct, don't announce what you're about to say
+
+SERMON METADATA:
+- Title: {{title}}
+- Speaker: {{speaker}}
+- Date: {{date}}
+
+TRANSCRIPT:
+{{transcript}}
+
+OUTPUT: Return a single paragraph, max 120 words. Straightforward TLDR. Use we/us/our throughout but don't start with 'We'. Vary the opening—lead with the topic or lesson. No JSON, no markdown—just the summary text.
