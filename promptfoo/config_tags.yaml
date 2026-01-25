@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: 'Tags Generation Evaluation'
+
+providers:
+  - id: azure:chat:gpt-5
+    label: azure-gpt-5
+    config:
+      apiHost: domain.openai.azure.com
+      apiVersion: '2024-10-21'
+      max_completion_tokens: 50000
+      reasoning_effort: low
+      response_format:
+        type: json_object
+      timeout: 300000
+
+defaultTest:
+  options:
+    timeout: 180000
+  assert:
+    - type: is-json
+
+prompts:
+  - id: tags
+    label: Tags Generation
+    raw: file://prompts/tags_prompt.txt
+
+tests:
+  - file://tests/tags_bearing_burdens_test.yaml
+  - file://tests/tags_grateful_grind_test.yaml
+  - file://tests/tags_encouraging_others_test.yaml
+  - file://tests/tags_growing_grace_test.yaml
+

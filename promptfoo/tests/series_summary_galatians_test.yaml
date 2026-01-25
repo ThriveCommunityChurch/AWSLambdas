@@ -1,0 +1,41 @@
+- description: 'Series Summary - Galatians: Freedom in Christ'
+  vars:
+    seriesName: 'Galatians: Freedom in Christ'
+    messageSummaries: |
+      Message 1: "Freedom!" - Paul's letter to the Galatians confronts a dangerous drift back toward legalism. The freedom Christ purchased isn't license to sin but liberation from the exhausting treadmill of trying to earn God's favor. True freedom means living by grace, not by a checklist of religious performance.
+
+      Message 2: "Freedom And Service" - Christian freedom paradoxically leads to service. You're free from the law's condemnation, but that freedom expresses itself in love for others. The Galatians were tempted to use freedom selfishly, but Paul redirects them: serve one another through love, fulfilling the law's true intent.
+
+      Message 3: "Life in the Spirit" - Walking by the Spirit isn't mystical escapism—it's the daily choice to let God's Spirit direct your steps instead of your flesh. The Spirit produces fruit that no amount of rule-keeping can manufacture: love, joy, peace, patience, kindness, goodness, faithfulness, gentleness, and self-control.
+
+      Message 4: "Bearing One Another's Burdens" - Community life requires mutual burden-bearing. When someone stumbles, the response isn't judgment but gentle restoration. Galatians 6 reveals the rhythm of healthy church life: sometimes you carry others, sometimes you're carried, and pride has no place in either role.
+
+      Message 5: "Sowing and Reaping" - Spiritual harvest follows spiritual planting. What you invest your life in—whether flesh or Spirit—determines what you'll eventually reap. This isn't karma but the natural consequence of choices. The encouragement is to persist in doing good, trusting that the harvest will come in due season.
+  assert:
+    - type: javascript
+      value: |
+        // Verify summary exists and is under 80 words
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = json.summary || '';
+        const wordCount = summary.split(/\s+/).filter(w => w.length > 0).length;
+        return wordCount > 0 && wordCount <= 90;
+    - type: javascript
+      value: |
+        // Summary should be a single paragraph (no line breaks)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = json.summary || '';
+        return !summary.includes('\n');
+    - type: javascript
+      value: |
+        // Check summary doesn't start with banned openings
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = (json.summary || '').toLowerCase().trim();
+        const bannedStarts = [
+          'in a world', 'life often feels', 'life can often feel',
+          'imagine living', 'imagine a world', 'have you ever felt',
+          'today, you\'ll', 'this series'
+        ];
+        return !bannedStarts.some(banned => summary.startsWith(banned));
+    - type: not-contains
+      value: 'this series'
+

@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: 'Sermon Summary Evaluation'
+
+providers:
+  - id: azure:chat:gpt-5-mini
+    label: azure-gpt-5-mini
+    config:
+      apiHost: domain.openai.azure.com
+      apiVersion: '2024-10-21'
+      max_tokens: 6000
+      response_format:
+        type: json_object
+      timeout: 180000
+
+defaultTest:
+  options:
+    timeout: 180000
+  assert:
+    - type: not-contains
+      value: 'Join us as we'
+    - type: not-contains
+      value: 'Come discover'
+    - type: not-contains
+      value: 'In this powerful message'
+    - type: not-contains
+      value: 'This life-changing sermon'
+    - type: not-contains
+      value: 'this transformative message'
+    - type: not-contains
+      value: 'this incredible sermon'
+    - type: is-json
+
+prompts:
+  - id: sermon_summary
+    label: Sermon Summary
+    raw: file://prompts/sermon_summary_prompt.txt
+
+tests:
+  - file://tests/sermon_summary_bearing_burdens_test.yaml
+  - file://tests/sermon_summary_grateful_grind_test.yaml
+  - file://tests/sermon_summary_encouraging_others_test.yaml
+  - file://tests/sermon_summary_growing_grace_test.yaml
+

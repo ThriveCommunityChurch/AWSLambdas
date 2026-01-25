@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: 'Study Guide Two-Pass Evaluation - Devotional generated first with higher reasoning, then used as context for study guide'
+
+providers:
+  - id: file://./studyGuideChainProvider.js
+    label: study-guide-chain
+    config:
+      apiHost: domain.openai.azure.com
+      apiVersion: '2024-10-21'
+
+defaultTest:
+  options:
+    timeout: 300000  # 5 minutes for two API calls
+  assert:
+    - type: not-contains
+      value: 'Join us as we'
+    - type: not-contains
+      value: 'Come discover'
+    - type: not-contains
+      value: 'In this powerful message'
+    - type: not-contains
+      value: 'This life-changing sermon'
+    - type: not-contains
+      value: 'this transformative message'
+    - type: not-contains
+      value: 'this incredible sermon'
+    - type: is-json
+
+# Note: The chain provider handles the prompt internally - we just need to pass variables
+prompts:
+  - id: chain_passthrough
+    label: Chain Passthrough
+    raw: '{{title}} - {{speaker}} - {{date}}'
+
+tests:
+  - file://tests/study_guide_forgiving_test.yaml
+  - file://tests/study_guide_psalm37_test.yaml
+  - file://tests/study_guide_doubt_test.yaml
+  - file://tests/study_guide_joy_test.yaml
+  - file://tests/study_guide_lust_test.yaml
+  - file://tests/study_guide_loneliness_test.yaml
+  - file://tests/study_guide_bearing_burdens_test.yaml
+  - file://tests/study_guide_recovering_hypocrite_test.yaml
+

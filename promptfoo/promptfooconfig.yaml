@@ -1,0 +1,108 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: 'Sermon Content Generation Evaluation'
+
+# Azure OpenAI provider configuration
+# NOTE: gpt-5-mini uses reasoning tokens that consume the token budget
+# We need high max_completion_tokens to allow for reasoning + output
+providers:
+  - id: azure:chat:gpt-5-mini
+    label: azure-gpt-5-mini
+    config:
+      apiHost: domain.openai.azure.com
+      apiVersion: '2024-10-21'
+      max_completion_tokens: 50000
+      reasoning_effort: low
+      response_format:
+        type: json_object
+      timeout: 300000
+
+# Default test configuration
+defaultTest:
+  options:
+    timeout: 180000
+  assert:
+    # Check for BANNED marketing/promotional phrases
+    - type: not-contains
+      value: 'Join us as we'
+    - type: not-contains
+      value: 'Come discover'
+    - type: not-contains
+      value: 'In this powerful message'
+    - type: not-contains
+      value: 'This life-changing sermon'
+    - type: not-contains
+      value: 'this transformative message'
+    - type: not-contains
+      value: 'this incredible sermon'
+    - type: is-json
+
+prompts:
+  # ============================================
+  # SERMON NOTES PROMPT
+  # ============================================
+  - id: notes_v2
+    label: Sermon Notes
+    raw: |
+      [{"role": "system", "content": "You are a ministry assistant helping create sermon notes for church members. Your job is to distill a sermon transcript into shareable, practical notes that sound like this specific message, not a generic sermon.\n\nCRITICAL RULES:\n1. ONLY include scripture references that the speaker explicitly mentioned\n2. Quotes must be ACTUAL phrases from the sermon\n3. Key points should use the speaker's own framework/outline\n4. The summary should speak directly to the reader in PRESENT tense\n5. Application points must be specific actions, not vague encouragements\n6. If unsure whether something was said, LEAVE IT OUT\n7. Do not mention the speaker, church, or organization names\n8. Write as if talking to the reader now (using 'you' and 'we')\n\nTONE (CRITICAL):\nThe summary must be EDUCATIONAL, REFLECTIVE, and INFORMATIVE - like study notes or a teaching recap.\nDo NOT write in an INVITATIONAL or PROMOTIONAL tone - this is not a church bulletin or marketing material.\n\nEDUCATIONAL TONE (USE THIS):\n- Explains what the sermon teaches\n- Describes biblical patterns and principles\n- Helps the reader understand and reflect on the content\n- States observations and insights directly\n- Example: 'The sermon traces how Jesus meets people in the middle of their mess...'\n- Example: 'Forgiveness in this passage isn't merely erasing the past but issuing a new future...'\n\nINVITATIONAL TONE (AVOID THIS):\n- Sounds like an event announcement or call-to-action\n- Uses promotional language like 'powerful', 'life-changing', 'incredible'\n- Example: 'Join us as we discover...' (too promotional)\n- Example: 'Come explore the depths of...' (too promotional)\n\nSUMMARY OPENING RULES:\nThe FIRST SENTENCE must NOT begin with an imperative verb or command. Do NOT start with verbs like: Stop, Start, Begin, Let, Take, Make, Do, Don't, Bring, Give, Choose, Accept, Turn, Be, Have, Get, Keep, etc.\n\nBAD OPENINGS: 'Stop fretting...', 'Bring your doubts...', 'Do not judge...', 'Be anxious for nothing...'\n\nGOOD OPENING PRINCIPLES:\n- Do NOT refer to 'the sermon', 'the message', 'this message', or 'the teaching' - just state the content directly\n- BAD: 'The sermon examines forgiveness...' or 'This message focuses on...'\n- GOOD: 'Forgiveness in Luke 5 isn't just pardon—it's a new beginning.' (direct insight)\n- GOOD: 'A desperate father's cry—\"I believe, help my unbelief\"—frames the whole passage.' (scene)\n- GOOD: 'Fretting, in Hebrew, literally means to burn.' (specific fact)\n- Start with the ACTUAL content: an insight, a tension, a scene, a surprising fact from the text\n\nOUTPUT FORMAT (CRITICAL):\n- Your response must be ONLY a valid JSON object\n- Do NOT include any text before or after the JSON\n- Do NOT wrap the JSON in markdown code fences\n- The JSON must be parseable by JSON.parse()"}, {"role": "user", "content": "SERMON METADATA:\n- Title: {{title}}\n- Speaker: {{speaker}}\n- Date: {{date}}\n\nTRANSCRIPT:\n{{transcript}}\n\nGenerate sermon notes in this exact JSON structure:\n\n{\"mainScripture\": \"The primary passage (e.g., 'Galatians 4:1-7'). Empty string if none.\", \"summary\": \"2-3 paragraphs (~250 words) in EDUCATIONAL/REFLECTIVE tone (not invitational). Speak directly to the reader, capturing the sermon's core lesson. Separate paragraphs with \\\\n\\\\n. The FIRST SENTENCE must NOT start with an imperative verb.\", \"keyPoints\": [{\"point\": \"Clear, memorable statement using speaker's language\", \"scripture\": \"Book Chapter:Verse if explicitly referenced, otherwise empty string\", \"detail\": \"One sentence elaboration in present tense\"}], \"quotes\": [{\"text\": \"Actual memorable line from sermon\", \"context\": \"Brief reader-facing context or empty string\"}], \"applicationPoints\": [\"Specific, actionable takeaway - what should someone DO this week?\"]}\n\nMINIMUM REQUIREMENTS:\n- keyPoints: at least 2 items\n- applicationPoints: at least 1 item\n\nIMPORTANT: Return ONLY a single valid JSON object. No markdown, no explanation, no questions - just the JSON."}]
+
+  # ============================================
+  # STUDY GUIDE PROMPT
+  # ============================================
+  - id: study_guide_v1
+    label: Study Guide
+    raw: file://prompts/study_guide_prompt.txt
+
+  # ============================================
+  # PODCAST SUMMARY PROMPT
+  # ============================================
+  - id: podcast_summary_v1
+    label: Podcast Summary
+    raw: file://prompts/podcast_summary_prompt.txt
+
+  # ============================================
+  # SERMON SUMMARY PROMPT (for API/website display)
+  # ============================================
+  - id: sermon_summary_v1
+    label: Sermon Summary
+    raw: file://prompts/sermon_summary_prompt.txt
+
+  # ============================================
+  # TAGS GENERATION PROMPT
+  # ============================================
+  - id: tags_v1
+    label: Tags Generation
+    raw: file://prompts/tags_prompt.txt
+
+  # ============================================
+  # SERIES SUMMARY PROMPT
+  # ============================================
+  - id: series_summary_v1
+    label: Series Summary
+    raw: file://prompts/series_summary_prompt.txt
+
+# ============================================
+# TEST CASES
+# NOTE: This config is DEPRECATED. Use the separate config files instead:
+#   - config_notes.yaml       (Sermon Notes)
+#   - config_study_guide.yaml (Study Guides)
+#   - config_podcast.yaml     (Podcast Summaries)
+#   - config_sermon_summary.yaml (Sermon Summaries)
+#   - config_tags.yaml        (Tags Generation)
+#   - config_series_summary.yaml (Series Summaries)
+#
+# Run all evaluations with: .\run_all_evals.ps1
+# ============================================
+tests:
+  # Sermon Notes Tests only (for backward compatibility)
+  - file://tests/forgiving_test.yaml
+  - file://tests/psalm37_test.yaml
+  - file://tests/unfair_test.yaml
+  - file://tests/do_not_judge_test.yaml
+  - file://tests/doubt_test.yaml
+  - file://tests/joy_test.yaml
+  - file://tests/lust_test.yaml
+  - file://tests/jesus_is_offensive_test.yaml
+  - file://tests/loneliness_test.yaml
+  - file://tests/peace_test.yaml
+  - file://tests/do_not_love_world_test.yaml
+  - file://tests/sowing_reaping_test.yaml

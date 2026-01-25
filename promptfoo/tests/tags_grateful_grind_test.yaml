@@ -1,0 +1,46 @@
+- description: 'Tags - Grateful in the Grind'
+  vars:
+    summary: 'Gratitude isn''t reserved for mountaintop moments—it''s forged in the daily grind. When circumstances feel relentless and joy seems distant, choosing thankfulness becomes an act of faith. This isn''t about pretending everything is fine, but about recognizing God''s presence even in difficulty. The practice of gratitude rewires how you see your life, shifting focus from what''s lacking to what''s been given. In the ordinary rhythms of work, relationships, and waiting, thanksgiving becomes the pathway to contentment and deeper trust in God''s faithfulness.'
+    transcript: file://transcripts/grateful_grind.txt
+  assert:
+    - type: javascript
+      value: |
+        // Verify tags is an array with 1-5 items
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const tags = json.tags || [];
+        return Array.isArray(tags) && tags.length >= 1 && tags.length <= 5;
+    - type: javascript
+      value: |
+        // Verify all tags are from the valid list
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const tags = json.tags || [];
+        const validTags = [
+          'Marriage', 'Family', 'Friendship', 'Singleness',
+          'FinancialStewardship', 'Generosity',
+          'NatureOfGod', 'Trinity', 'Salvation', 'Resurrection', 'HolySpirit',
+          'Church', 'EndTimes', 'SinAndRepentance', 'Faith', 'Sanctification', 'Covenant', 'Apologetics',
+          'Prayer', 'Fasting', 'Worship', 'BibleStudy', 'Meditation', 'Service', 'Praise',
+          'Baptism', 'Communion',
+          'Youth', 'Aging', 'GriefAndLoss', 'LifeTransitions',
+          'SocialJustice', 'RacialReconciliation', 'Poverty', 'Creation', 'Politics',
+          'Identity', 'Purpose', 'Courage', 'Hope', 'Love', 'Joy', 'Peace', 'Patience',
+          'Humility', 'Wisdom', 'Integrity', 'Forgiveness', 'Gratitude', 'Trust', 'Obedience', 'Contentment', 'Pride', 'Fear', 'Anger',
+          'Suffering', 'Doubt', 'Anxiety', 'Depression', 'Addiction', 'Temptation', 'SpiritualWarfare', 'Persecution',
+          'Heaven', 'Hell',
+          'Evangelism', 'Missions', 'Discipleship', 'Leadership', 'Witnessing',
+          'Parables', 'SermonOnTheMount', 'FruitOfTheSpirit', 'ArmorOfGod', 'Prophets',
+          'Genesis', 'Exodus', 'Psalms', 'Proverbs', 'Gospels', 'Acts', 'Romans', 'PaulineEpistles', 'Revelation', 'OldTestament', 'NewTestament',
+          'Advent', 'Christmas', 'Lent', 'Easter', 'Pentecost',
+          'Work', 'Rest',
+          'BiblicalManhood', 'BiblicalWomanhood', 'SexualPurity',
+          'Miracles', 'Prophecy', 'Healing', 'Community', 'Culture', 'Technology'
+        ];
+        return tags.every(tag => validTags.includes(tag));
+    - type: javascript
+      value: |
+        // Verify relevant tags are included (Gratitude, Contentment, or Faith expected)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const tags = json.tags || [];
+        const expectedTags = ['Gratitude', 'Contentment', 'Faith', 'Trust', 'Joy'];
+        return expectedTags.some(expected => tags.includes(expected));
+

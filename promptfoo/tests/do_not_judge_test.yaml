@@ -1,0 +1,89 @@
+- description: 'Notes - Do Not Judge (Matthew 7) - Tests Do Not title trap'
+  vars:
+    title: 'Do Not Judge'
+    speaker: 'John Roth'
+    date: '2022-07-24'
+    transcript: |
+      Let's pray. Lord God, thank you so much for your goodness and grace in our lives. Jesus, the fact that you spoke some hard words, sometimes hard words that we don't even know what to do with at times.
+
+      Judge. When you hear that verse in a conversation with somebody, it's usually spoken back at you. Judge not and you shall not be judged. Most people want to say, don't tell me how to live. As long as it makes me happy and I'm not hurting anybody, everything's OK.
+
+      Now, judge not lest ye be judged. Have you ever been judged wrongly? It's no fun. It stinks to be judged, especially incorrectly.
+
+      This week we're talking about probably the top reason people stay out of the Christian church. And that is Christians are so judgmental. In a book called Un-Christian, they interviewed people ages 16 to 19. 90 percent of them said this critique of Christianity: They are too judgmental.
+
+      What comes before Matthew seven? Matthew six. In chapter six, the word hypocrisy comes up at least three times. He's focused again and again on how you can be hypocritical.
+
+      Matthew 7:1-5 says: Judge not that you be not judged. For with the judgments you pronounce, you will be judged. Why do you see the speck that is in your brother's eye, but do not notice the log that is in your own eye? You hypocrite, first take the log out of your own eye and then you will see clearly to take the speck out of your brother's eye.
+
+      Later in Chapter seven, Jesus says: Beware of false prophets who come to you in sheep's clothing. You will recognize them by their fruit. So in the same chapter that Jesus says Judge not, he also says you've got to make a judgment. Watch out for people who are false prophets.
+
+      When you judge, don't judge hypocritically. The place where you issue your harshest judgment often reveals your deepest weakness. Psychologists call it projection. We are quick to judge others and easily excuse ourselves for the same behavior.
+
+      Don't judge superficially. Jesus says in John 7, do not judge by appearances, but judge with right judgment. Have you ever been judged by your appearance? That is the basis of racism and sexism and ageism.
+
+      We are to defend other people's reputations. There's a commandment: You shall not bear false witness against your neighbor. Luther explained it this way: We should fear and love God so that we do not tell lies about our neighbor, betray him, slander him, or hurt his reputation, but defend him, speak well of him, and explain everything in the kindest way.
+
+      Gossip is being the judge and jury without even that person in the courtroom. It's a false judgment.
+
+      We are here to restore those who are wandering. Paul puts it in Galatians: Brothers, if anyone is caught in any transgression, you who are spiritual should restore him in a spirit of gentleness. Bear one another's burdens and so fulfill the law of Christ.
+
+      James says: Mercy triumphs over judgment. Jesus took our false accusations against him. He put them to death on the cross. And he spoke grace and mercy.
+  assert:
+    - type: javascript
+      value: |
+        // Check that summary doesn't start with "Do not" even though title does
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = json.summary || '';
+        const firstTwoWords = summary.trim().split(/\s+/).slice(0,2).join(' ').toLowerCase();
+        return firstTwoWords !== 'do not' && !summary.trim().toLowerCase().startsWith("don't");
+    - type: javascript
+      value: |
+        // Verify keyPoints array has at least 2 items
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        return json.keyPoints && json.keyPoints.length >= 2;
+    - type: javascript
+      value: |
+        // Check that mainScripture references Matthew 7
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const scripture = (json.mainScripture || '').toLowerCase();
+        return scripture.includes('matthew') && scripture.includes('7');
+    # ACCURACY VALIDATIONS
+    - type: javascript
+      value: |
+        // Verify quotes appear in transcript (fuzzy match - at least 60% of words)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const transcript = context.vars.transcript.toLowerCase();
+        const quotes = json.quotes || [];
+        if (quotes.length === 0) return true;
+
+        function wordOverlap(quote, text) {
+          const quoteWords = quote.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => w.length > 3);
+          if (quoteWords.length === 0) return 1;
+          const matchCount = quoteWords.filter(w => text.includes(w)).length;
+          return matchCount / quoteWords.length;
+        }
+
+        const failed = quotes.filter(q => wordOverlap(q.text, transcript) < 0.6);
+        return failed.length === 0;
+    - type: javascript
+      value: |
+        // Verify scripture references were mentioned in transcript
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const transcript = context.vars.transcript.toLowerCase();
+
+        const scriptures = [];
+        if (json.mainScripture) scriptures.push(json.mainScripture);
+        (json.keyPoints || []).forEach(kp => { if (kp.scripture) scriptures.push(kp.scripture); });
+
+        const failed = scriptures.filter(ref => {
+          if (!ref || ref.trim() === '') return false;
+          const refLower = ref.toLowerCase();
+          const bookMatch = refLower.match(/^(\d?\s*[a-z]+)/);
+          if (!bookMatch) return false;
+          const book = bookMatch[1].replace(/\s+/g, ' ').trim();
+          return !transcript.includes(book);
+        });
+
+        return failed.length === 0;
+        

@@ -1,0 +1,90 @@
+- description: 'Notes - Its Unfair Thank God (Luke 15) - Tests trap title handling'
+  vars:
+    title: "It's Unfair, Thank God!"
+    speaker: 'John Roth'
+    date: '2022-11-13'
+    transcript: |
+      We're going to be looking at one of the most famous parables of Jesus, and in the context it was written. Let's pray. Lord God, today we thank you for, and we remember, Lord, those who have served in this country for the sake of protecting and guarding and keeping what we cherish in so many ways.
+
+      So we're going to be talking about unoffendable again. When you live unoffendably, people will be offended at you. They were at Jesus. And we're going to read that in context of Luke chapter 15.
+
+      Luke 15, one through seven. Now the tax collectors and sinners were all drawing near to him. And the Pharisees and the scribes grumbled, saying, this man receives sinners and eats with them. So he told them this parable. What man of you having a hundred sheep, if he has lost one of them, does not leave the ninety nine in the open country and go after the one that is lost until he finds it.
+
+      Jesus speaks the parable of the lost sheep in the context of how he was living and how people were complaining. The Pharisees were not the strictest group. There was a group called the Essenes who created their own commune in the desert to stay pure.
+
+      And then you have Jesus who blows out all the rules. He actually will spend time with and welcome sinners and tax collectors and eat with them and touch them and heal them.
+
+      First of all, the sheep. When Jesus uses this familiar Middle Eastern understanding of sheep and shepherd, it was a religious insult because sheep are stupid and stubborn. This article says one sheep went off a 50 foot cliff and hundreds of them jumped off the cliff right after.
+
+      Sheep don't protect themselves. Sheep don't save themselves. Sheep can't even care for themselves. We are constantly needing to be rescued. Psalm 23 says He restores my soul - the Hebrew word there is Shuv, which means to return or repent. He causes me to come back.
+
+      A sheep can contribute nothing to its own salvation. Nothing. You want to live unoffendably, then accept the fact that you're a sheep - stubborn, sometimes stupid, strong-willed, and you wander. And then you realize all the other people you get offended at are sheep too.
+
+      Now the search. The sheep does not return on its own. If you want to put it that way. Now, some people will say I have to do something to be saved. You find that in this parable somewhere where the sheep does anything except be found?
+
+      Repentance doesn't bring about your forgiveness. Repentance happens because of your forgiveness. The shepherd goes out, searches, finds the sheep, picks it up, carries it all the way back. The sheep does nothing.
+
+      Finally, the shepherd. He finds the sheep and puts it on his shoulders rejoicing. He walks all the way home with joy. If I were that shepherd, I'd first give it a lecture. Jesus does not do that with you or with anyone.
+
+      He's gone through hell and back through that cross to the point of giving you a personal relationship with him. How can you not but say, okay, Lord, you are my shepherd.
+  assert:
+    - type: javascript
+      value: |
+        // Check that summary doesn't start with imperative verb
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = json.summary || '';
+        const firstWord = summary.trim().split(/\s+/)[0].toLowerCase();
+        const banned = ['stop', 'start', 'begin', 'let', 'take', 'make', 'do', "don't"];
+        return !banned.includes(firstWord);
+    - type: javascript
+      value: |
+        // Verify keyPoints array has at least 2 items
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        return json.keyPoints && json.keyPoints.length >= 2;
+    - type: javascript
+      value: |
+        // Check that mainScripture references Luke 15
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const scripture = (json.mainScripture || '').toLowerCase();
+        return scripture.includes('luke') && scripture.includes('15');
+    # ACCURACY VALIDATIONS
+    - type: javascript
+      value: |
+        // Verify quotes appear in transcript (fuzzy match - at least 60% of words)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const transcript = context.vars.transcript.toLowerCase();
+        const quotes = json.quotes || [];
+        if (quotes.length === 0) return true;
+
+        function wordOverlap(quote, text) {
+          const quoteWords = quote.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => w.length > 3);
+          if (quoteWords.length === 0) return 1;
+          const matchCount = quoteWords.filter(w => text.includes(w)).length;
+          return matchCount / quoteWords.length;
+        }
+
+        const failed = quotes.filter(q => wordOverlap(q.text, transcript) < 0.6);
+        return failed.length === 0;
+    - type: javascript
+      value: |
+        // Verify scripture references were mentioned in transcript
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const transcript = context.vars.transcript.toLowerCase();
+
+        const scriptures = [];
+        if (json.mainScripture) scriptures.push(json.mainScripture);
+        (json.keyPoints || []).forEach(kp => { if (kp.scripture) scriptures.push(kp.scripture); });
+
+        const failed = scriptures.filter(ref => {
+          if (!ref || ref.trim() === '') return false;
+          const refLower = ref.toLowerCase();
+          const bookMatch = refLower.match(/^(\d?\s*[a-z]+)/);
+          if (!bookMatch) return false;
+          const book = bookMatch[1].replace(/\s+/g, ' ').trim();
+          return !transcript.includes(book);
+        });
+
+        return failed.length === 0;
+        
+
+

@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: 'Series Summary Evaluation - Live MongoDB Data'
+
+# Set SERIES_EVAL_LIMIT env var to control how many series to test (default: 3)
+
+providers:
+  - id: azure:chat:gpt-5
+    label: azure-gpt-5
+    config:
+      apiHost: domain.openai.azure.com
+      apiVersion: '2024-10-21'
+      max_completion_tokens: 50000
+      reasoning_effort: low
+      response_format:
+        type: json_object
+      timeout: 300000
+
+defaultTest:
+  options:
+    timeout: 180000
+  assert:
+    - type: not-contains
+      value: 'Join us as we'
+    - type: not-contains
+      value: 'Come discover'
+    - type: not-contains
+      value: 'In this powerful message'
+    - type: not-contains
+      value: 'This life-changing sermon'
+    - type: not-contains
+      value: 'this transformative message'
+    - type: is-json
+
+prompts:
+  - id: series_summary
+    label: Series Summary
+    raw: file://prompts/series_summary_prompt.txt
+
+tests:
+  - file://tests/series_summary_dynamic.js
+

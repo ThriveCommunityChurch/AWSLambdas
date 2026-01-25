@@ -1,0 +1,39 @@
+- description: 'Series Summary - The Holy Spirit'
+  vars:
+    seriesName: 'The Holy Spirit'
+    messageSummaries: |
+      Message 1: "I Believe in the Holy Spirit" - The Holy Spirit isn't an impersonal force but the third person of the Trinity, fully God and actively at work in believers' lives. Understanding who the Spirit is transforms how you relate to God—not as distant deity but as present companion and guide.
+
+      Message 2: "The Coming of the Holy Spirit" - Pentecost wasn't just a historical event; it marked the beginning of a new era. The Spirit's coming fulfilled Jesus' promise that His followers wouldn't be left alone. The same power that raised Christ from the dead now dwells in every believer.
+
+      Message 3: "Gifted by the Spirit" - Spiritual gifts aren't for personal prestige but for building up the body of Christ. Every believer receives gifts, and every gift matters. The Spirit distributes these gifts as He wills, equipping the church to function as one body with many parts.
+
+      Message 4: "We Believe In The Holy Spirit" - The creed's affirmation of the Holy Spirit connects believers across centuries. The Spirit who inspired Scripture, empowered the apostles, and birthed the church continues His work today. Believing in the Spirit means expecting His active presence in your daily life.
+  assert:
+    - type: javascript
+      value: |
+        // Verify summary exists and is under 80 words
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = json.summary || '';
+        const wordCount = summary.split(/\s+/).filter(w => w.length > 0).length;
+        return wordCount > 0 && wordCount <= 90;
+    - type: javascript
+      value: |
+        // Summary should be a single paragraph (no line breaks)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = json.summary || '';
+        return !summary.includes('\n');
+    - type: javascript
+      value: |
+        // Check summary doesn't start with banned openings
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = (json.summary || '').toLowerCase().trim();
+        const bannedStarts = [
+          'in a world', 'life often feels', 'life can often feel',
+          'imagine living', 'imagine a world', 'have you ever felt',
+          'today, you\'ll', 'this series'
+        ];
+        return !bannedStarts.some(banned => summary.startsWith(banned));
+    - type: not-contains
+      value: 'this series'
+

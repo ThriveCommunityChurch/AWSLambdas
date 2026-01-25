@@ -1,0 +1,138 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: 'Podcast Summary Evaluation'
+
+providers:
+  - id: azure:chat:gpt-5-mini
+    label: azure-gpt-5-mini
+    config:
+      apiHost: domain.openai.azure.com
+      apiVersion: '2024-10-21'
+      max_tokens: 6000
+      response_format:
+        type: json_object
+      timeout: 180000
+
+defaultTest:
+  options:
+    timeout: 180000
+  assert:
+    - type: is-json
+    # Opening pattern checks
+    - type: javascript
+      value: |
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const desc = (json.description || '').trim().toLowerCase();
+        const bannedOpenings = [
+          'imagine', 'in a world', 'as we', 'as you', 'life often', 'life is',
+          'what does it mean', 'you are invited', 'this message invites',
+          'embrace', 'embracing', 'you notice', "you're juggling",
+          'have you ever', 'what do you do when', 'that awkward moment'
+        ];
+        return !bannedOpenings.some(p => desc.startsWith(p));
+    # Heavy second person discovery clichés
+    - type: not-contains
+      value: "you'll discover"
+    - type: not-contains
+      value: "you'll learn"
+    - type: not-contains
+      value: "you'll be challenged"
+    - type: not-contains
+      value: "you'll find"
+    - type: not-contains
+      value: 'as you reflect'
+    - type: not-contains
+      value: 'as you engage with this message'
+    # Meta-commentary about the sermon
+    - type: not-contains
+      value: 'This sermon invites'
+    - type: not-contains
+      value: 'This message invites'
+    - type: not-contains
+      value: 'This episode invites'
+    - type: not-contains
+      value: "Today, you'll discover"
+    - type: not-contains
+      value: "Today's message invites"
+    - type: not-contains
+      value: 'The message invites'
+    - type: not-contains
+      value: 'Join us as we'
+    - type: not-contains
+      value: 'Come discover'
+    - type: not-contains
+      value: 'In this powerful message'
+    - type: not-contains
+      value: 'This life-changing sermon'
+    - type: not-contains
+      value: 'this transformative message'
+    - type: not-contains
+      value: 'this incredible sermon'
+    # Closing question patterns
+    - type: javascript
+      value: |
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const desc = (json.description || '').trim();
+        const bannedEndings = [
+          'how will you respond', 'are you ready to', 'what will you do',
+          'how might your life change', 'what might it look like'
+        ];
+        const endsWithQuestion = desc.endsWith('?');
+        const lastSentence = desc.split(/[.!]\s+/).pop().toLowerCase();
+        const hasBannedEnding = bannedEndings.some(p => lastSentence.includes(p));
+        return !(endsWithQuestion && hasBannedEnding);
+    # Overused phrases
+    - type: not-contains
+      value: 'transformative'
+    - type: not-contains
+      value: 'transformation'
+    - type: not-contains
+      value: 'transformed'
+    - type: not-contains
+      value: 'profound'
+    - type: not-contains
+      value: 'profoundly'
+    - type: javascript
+      value: |
+        // Check for overuse of "journey" (allow max 1)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const desc = (json.description || '').toLowerCase();
+        const journeyCount = (desc.match(/journey/g) || []).length;
+        return journeyCount <= 1;
+    - type: javascript
+      value: |
+        // Check for overuse of "discover/discovery" (allow max 1)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const desc = (json.description || '').toLowerCase();
+        const discoverCount = (desc.match(/discover/g) || []).length;
+        return discoverCount <= 1;
+    - type: javascript
+      value: |
+        // Check for overuse of "invite/invitation" (allow max 1)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const desc = (json.description || '').toLowerCase();
+        const inviteCount = (desc.match(/invit/g) || []).length;
+        return inviteCount <= 1;
+    - type: javascript
+      value: |
+        // Check for overuse of "embrace/embracing" (allow max 1)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const desc = (json.description || '').toLowerCase();
+        const embraceCount = (desc.match(/embrac/g) || []).length;
+        return embraceCount <= 1;
+
+prompts:
+  - id: podcast
+    label: Podcast Summary
+    raw: file://prompts/podcast_summary_prompt.txt
+
+tests:
+  - file://tests/podcast_forgiving_test.yaml
+  - file://tests/podcast_psalm37_test.yaml
+  - file://tests/podcast_doubt_test.yaml
+  - file://tests/podcast_joy_test.yaml
+  - file://tests/podcast_lust_test.yaml
+  - file://tests/podcast_loneliness_test.yaml
+  - file://tests/podcast_be_anxious_test.yaml
+  - file://tests/podcast_jesus_is_offensive_test.yaml
+  - file://tests/podcast_recovering_hypocrite_test.yaml
+

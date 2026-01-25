@@ -1,0 +1,66 @@
+- description: 'Series Summary - Embodied'
+  vars:
+    seriesName: 'Embodied'
+    messageSummaries: |
+      1. "God Created Our Bodies"
+         Date: April 27, 2025
+         Passage: John 20:24-29
+         Summary: Embrace the hope that your embodied life holds, as this message invites you to see your physical existence not as a limitation but as a vital part of God's creation and purpose. You'll discover that the resurrection of Jesus affirms the goodness of the material world and your inherent worth, challenging the notion that life is merely a waiting room for something better.
+
+      2. "But Wait! There's More"
+         Date: May 4, 2025
+         Passage: John 21
+         Summary: Imagine standing on the shore, unsure of your next steps, when suddenly, the familiar voice of Jesus calls you back to purpose. This sermon invites you to recognize how the resurrected Christ continually reveals Himself in your life, transforming your identity and calling you to share His love with the world.
+
+      3. "Broken & Healed Bodies"
+         Date: May 11, 2025
+         Passage: Luke 13:10-17
+         Summary: Your body matters, and so does the brokenness we all experience in this world. Today, you'll discover how Jesus sees and values each of us, even in our imperfections, as He did with the woman bent over for 18 years. Through her story, we learn that our suffering isn't a punishment but an opportunity for God's healing touch.
+
+      4. "Fully Embodied Gospel"
+         Date: May 18, 2025
+         Passage: 1 Corinthians 1:15-23
+         Summary: You are invited to explore the profound truth that you are an embodied representative of God, intricately designed to reflect His image and goodness in the world. This message challenges you to reconsider your understanding of God, moving beyond abstract notions to embrace the tangible reality of Jesus Christ.
+
+      5. "Thorn In The Flesh"
+         Date: May 25, 2025
+         Passage: 2 Corinthians 12:1-10
+         Summary: Embrace the beauty of your brokenness, as this message invites you to see how God uses our weaknesses, or "thorns" as a pathway to deeper connection with Him and others. You'll discover that boasting in our struggles, rather than our strengths, reveals the true power of grace and fosters genuine relationships.
+
+      6. "Stewarding Our Bodies"
+         Date: June 1, 2025
+         Passage: Romans 12:1-3
+         Summary: Embrace the transformative call to be a living sacrifice, where your very body becomes a vessel for worship and service. This message invites you to reconsider what it means to belong—not just to a community, but to God, who values your physical existence as integral to your spiritual life.
+
+      7. "Resurrection Bodies"
+         Date: June 8, 2025
+         Passage: 1 Corinthians 15
+         Summary: Imagine living with the assurance that every effort you make today has eternal significance. This message invites you to embrace the transformative power of the resurrection, challenging the notion that life is merely a waiting room for heaven. Instead, you'll discover that your actions—no matter how small—are part of God's grand design for renewal and purpose.
+  assert:
+    - type: javascript
+      value: |
+        // Verify summary exists and is under 80 words
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = json.summary || '';
+        const wordCount = summary.split(/\s+/).filter(w => w.length > 0).length;
+        return wordCount > 0 && wordCount <= 90;
+    - type: javascript
+      value: |
+        // Summary should be a single paragraph (no line breaks)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = json.summary || '';
+        return !summary.includes('\n');
+    - type: javascript
+      value: |
+        // Check summary doesn't start with banned openings
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = (json.summary || '').toLowerCase().trim();
+        const bannedStarts = [
+          'in a world', 'life often feels', 'life can often feel',
+          'imagine living', 'imagine a world', 'have you ever felt',
+          'today, you\'ll', 'this series'
+        ];
+        return !bannedStarts.some(banned => summary.startsWith(banned));
+    - type: not-contains
+      value: 'this series'
+

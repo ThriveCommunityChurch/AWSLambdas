@@ -1,0 +1,112 @@
+# Test case: Believe Boldly - Acts 4
+# Speaker: Tim Hartner
+# This sermon explores Easter boldness - speaking about Jesus with gentleness and love,
+# seeing God's image in all people, being encouragers like Barnabas, and caring for creation.
+# Key themes: boldness, encouragement, Barnabas, witness, blessing others
+
+- description: 'Notes - Believe Boldly (Acts 4) - Tests positive boldness/encouragement topic'
+  vars:
+    title: 'Believe Boldly'
+    speaker: 'Tim Hartner'
+    date: '2021-04-25'
+    transcript: |
+      My name is Tim Hartner. I'm a retired pastor of St. Paul Lutheran Church in Weston, Florida. John Roth is one of my dear clergy buddies, and I've known John for almost 30 years. You all are so fortunate to have one of the finest teacher, preacher, proclaimers of God's good news.
+
+      Looking around Acts chapter 4, there's a word that jumped out at me, and the word is boldness. Now when they saw the boldness of Peter and John, and perceived that they were uneducated common men, they were astonished, and they recognized that they had been with Jesus.
+
+      Peter and John prayed, grant your servants Lord to speak your word with all boldness. And the place they were standing, they were filled with the Holy Spirit and they spoke the word of God with boldness.
+
+      Boldness is not the same as chutzpah. Neither is it the courage that our college kids try to conjure up when they're trying to work up the nerve to ask someone out for a date. Neither is it something you learn in the assertiveness training class.
+
+      For us in this setting, boldness grows out of God's great bold act. Before the foundation of the world, God's bold act on how he would save and redeem and so love the world that he would give his one and only son. Now there's boldness.
+
+      Jesus' bold ministry for three years of healing and teaching and proclaiming. And then in the great ultimate bold act of all on Easter morning, God reached in to that place and Jesus got up out of that grave. And as he came, the announcement went out that he is risen indeed.
+
+      And now by God's grace, through faith in Christ alone, we have life, new life, forgiven life, eternal life, abundant life. Nothing puny about all that is there. That was big, God's plan of salvation. That was bold. And that's what makes us now God's bold sons and daughters.
+
+      We all tend to consider ourselves good middle class, respectable folk, careful about our religion. We've all probably experienced somewhere along the line some kind of religious imperialism from well-meaning fellow believers who end up kind of bludgeoning us or others with Jesus.
+
+      But what can sneak up on us is a failure then to speak of our faith ever, afraid that we are in some way going to cross a line, offend somebody. We end up drawing back, end up being so timid that the saving word of Jesus never crosses our lips.
+
+      Boldness is part of our Monday to Saturday world. Where God gives us the opportunities, where the Holy Spirit creates the moments. I like to call it witnessing over a chicken sandwich at one o'clock on Thursday afternoon.
+
+      Be bold in seeing the image of God in all people, especially in those that are not in your image. Those early Christians in the book of Acts broke down barriers for that gospel to go from their neighborhood into the nations.
+
+      Be bold in caring for God's creation. We just had an Earth Day reminder this past week. The earth is the Lord's and the fullness thereof. It's not ours. We're the managers in the absence of the owner. We're stewards.
+
+      Be bold in being the hands and feet and heart of the risen Lord in the world. Where is he? He's in you, and you, and me. We are his hands, his feet. We are the heart of the risen Lord out in the world.
+
+      Find something in the world that breaks your heart, then do something about it. Because you are the hands, the feet, the heart of our living Lord Jesus.
+
+      Now the full number of those who believed were of one heart and soul, and no one said that any of the things that belonged to him was his own, but they had everything in common. And with great power, the apostles were giving their testimony to the resurrection of the Lord Jesus, and great grace was upon them all.
+
+      There was not a needy person among them, for as many as were owners of lands or houses sold them and brought the proceeds of what was sold, and laid it at the apostles' feet, and it was distributed to each as any had need.
+
+      Thus Joseph, who was also called by the apostles Barnabas, which means son of encouragement, a Levite, a native of Cyprus, sold the field that belonged to him and brought the money and laid it at the apostles' feet.
+
+      I am a huge fan of Barnabas. For one thing, I love the meaning of his name, son of encouragement. Barnabas is the only person that the New Testament calls a good man. Isn't that interesting? Because he was an encourager.
+
+      Your world can use some more sons of encouragement, daughters of encouragement. There's a whole lot of people out in our world who need encouraging. Be an encourager. Be a Barnabas encourager, not a discourager.
+
+      Be a benediction for people. Don't just listen to the words of a benediction, but be a benediction, be a blessing. Make life easier, never harder for those around you. Your home, your church, your place of employment, your neighborhood. Be bold in doing all that.
+
+      People of Thrive, keep thriving. Be thankful, gracious receivers of God's bold gift of salvation. And be bold in all the ways you keep that blessing moving.
+  assert:
+    - type: javascript
+      value: |
+        // Check that summary doesn't start with imperative verb
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = json.summary || '';
+        const firstWord = summary.trim().split(/\s+/)[0].toLowerCase();
+        const banned = ['stop', 'start', 'begin', 'let', 'take', 'make', 'do', "don't", 'be'];
+        return !banned.includes(firstWord);
+    - type: javascript
+      value: |
+        // Verify keyPoints array has at least 2 items
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        return json.keyPoints && json.keyPoints.length >= 2;
+    - type: javascript
+      value: |
+        // Check that mainScripture references Acts 4
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const scripture = (json.mainScripture || '').toLowerCase();
+        return scripture.includes('acts') && scripture.includes('4');
+    # ACCURACY VALIDATIONS
+    - type: javascript
+      value: |
+        // Verify quotes appear in transcript (fuzzy match - at least 60% of words)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const transcript = context.vars.transcript.toLowerCase();
+        const quotes = json.quotes || [];
+        if (quotes.length === 0) return true;
+
+        function wordOverlap(quote, text) {
+          const quoteWords = quote.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => w.length > 3);
+          if (quoteWords.length === 0) return 1;
+          const matchCount = quoteWords.filter(w => text.includes(w)).length;
+          return matchCount / quoteWords.length;
+        }
+
+        const failed = quotes.filter(q => wordOverlap(q.text, transcript) < 0.6);
+        return failed.length === 0;
+    - type: javascript
+      value: |
+        // Verify scripture references were mentioned in transcript
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const transcript = context.vars.transcript.toLowerCase();
+
+        const scriptures = [];
+        if (json.mainScripture) scriptures.push(json.mainScripture);
+        (json.keyPoints || []).forEach(kp => { if (kp.scripture) scriptures.push(kp.scripture); });
+
+        const failed = scriptures.filter(ref => {
+          if (!ref || ref.trim() === '') return false;
+          const refLower = ref.toLowerCase();
+          const bookMatch = refLower.match(/^(\d?\s*[a-z]+)/);
+          if (!bookMatch) return false;
+          const book = bookMatch[1].replace(/\s+/g, ' ').trim();
+          return !transcript.includes(book);
+        });
+
+        return failed.length === 0;
+

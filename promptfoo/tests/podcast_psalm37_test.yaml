@@ -1,0 +1,48 @@
+- description: 'Podcast - Stop Fretting (relatable tension opening, not starting with Stop)'
+  vars:
+    title: 'Stop Fretting, Start Delighting'
+    speaker: 'Pastor John'
+    date: '2024-01-14'
+    transcript: |
+      Good morning everyone. Today we're going to be looking at Psalm 37. If you have your Bibles, turn there with me. This is a psalm of David, written when he was an old man looking back on his life.
+
+      The psalm opens with these words: "Do not fret because of evildoers, nor be envious of the workers of iniquity. For they shall soon be cut down like the grass, and wither as the green herb."
+
+      You know, I've been thinking a lot about this word "fret." In Hebrew, it literally means to burn or get heated up. It's that slow burn of frustration when you see people who don't follow God seemingly prospering while you're struggling to make ends meet.
+
+      We live in a world where the outrage machine is always running. Social media is designed to make you fret. To keep you in that perpetual loop of righteous indignation. But David says: stop it. Stop burning up inside.
+
+      Look at verse 4: "Delight yourself also in the Lord, and He shall give you the desires of your heart." Notice the order here. It's not about getting what you want from God. It's about finding your delight IN God. When God becomes your delight, your desires actually change.
+
+      Here's the thing about delight - what you delight in is what you become. If you delight in outrage, you become an outraged person. If you delight in God, you become more like God.
+
+      Verse 7 says: "Rest in the Lord, and wait patiently for Him; do not fret because of him who prospers in his way, because of the man who brings wicked schemes to pass."
+
+      The Hebrew word for "rest" here is "damam" - it means to be silent, to be still, to wait in trust. It's not passive. It's active trust. It's choosing to anchor your soul in God's faithfulness rather than demanding answers right now.
+
+      Let me tell you a story. Years ago, I was passed over for a promotion that I really wanted. The person who got it, honestly, didn't deserve it. They had cut corners, played politics, and somehow came out on top. I was furious. I spent months fretting, burning up inside.
+
+      Then one day, I read verse 25: "I have been young, and now am old; yet I have not seen the righteous forsaken, nor his descendants begging bread." David is speaking from decades of experience. He's seen it all. And his testimony is: God is faithful. Trust the long timeline.
+
+      Finally, look at verse 37: "Mark the blameless man, and observe the upright; for the future of that man is peace." The future of the righteous is peace. Not immediate vindication. Not instant success. But peace.
+
+      So what's the application here? First, identify your fretting loops. Where are you burning up inside? Second, practice the discipline of delight. Spend more time with God than with the outrage machine. Third, trust the long timeline. God is working a bigger story than you can see.
+
+      Remember: what you delight in is what you become. Choose wisely. Let's pray.
+  assert:
+    - type: javascript
+      value: |
+        // Check that description doesn't start with "Stop" even though title does
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const description = json.description || '';
+        const firstWord = description.trim().split(/\s+/)[0].toLowerCase();
+        return firstWord !== 'stop';
+    - type: javascript
+      value: |
+        // Description should be 100-300 words
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const description = json.description || '';
+        const wordCount = description.split(/\s+/).filter(w => w.length > 0).length;
+        return wordCount >= 100 && wordCount <= 300;
+    - type: not-contains
+      value: 'This message invites'

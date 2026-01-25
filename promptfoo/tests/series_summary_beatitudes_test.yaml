@@ -1,0 +1,39 @@
+- description: 'Series Summary - The Beatitudes'
+  vars:
+    seriesName: 'The Beatitudes'
+    messageSummaries: |
+      Message 1: "Blessed Are The Poor" - Jesus opens the Sermon on the Mount with a paradox: blessing comes not to the self-sufficient but to those who recognize their spiritual poverty. Being "poor in spirit" means acknowledging your complete dependence on God, stripping away the illusion that you can earn your way into the kingdom. This poverty isn't weakness—it's the doorway to receiving everything God offers.
+
+      Message 2: "Blessed Are The Meek" - Meekness isn't weakness; it's strength under control. Jesus describes those who inherit the earth not as the aggressive or ambitious, but as those who trust God enough to surrender their rights. The meek don't demand their way because they know their security rests in God's hands, not their own striving.
+
+      Message 3: "Blessed Are Those Who Hunger And Thirst" - Spiritual hunger reveals what you truly value. Those who hunger and thirst for righteousness aren't casually interested in God—they're desperate for Him. This beatitude promises satisfaction, but only to those whose appetite for God's kingdom exceeds their appetite for everything else.
+
+      Message 4: "Blessed Are The Peacemakers" - Peacemakers don't just avoid conflict; they actively pursue reconciliation. Being called "children of God" comes to those who reflect the Father's heart for restoration. This work is costly—it requires entering into broken situations and absorbing the pain of division to bring healing.
+  assert:
+    - type: javascript
+      value: |
+        // Verify summary exists and is under 80 words
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = json.summary || '';
+        const wordCount = summary.split(/\s+/).filter(w => w.length > 0).length;
+        return wordCount > 0 && wordCount <= 90;
+    - type: javascript
+      value: |
+        // Summary should be a single paragraph (no line breaks)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = json.summary || '';
+        return !summary.includes('\n');
+    - type: javascript
+      value: |
+        // Check summary doesn't start with banned openings
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = (json.summary || '').toLowerCase().trim();
+        const bannedStarts = [
+          'in a world', 'life often feels', 'life can often feel',
+          'imagine living', 'imagine a world', 'have you ever felt',
+          'today, you\'ll', 'this series'
+        ];
+        return !bannedStarts.some(banned => summary.startsWith(banned));
+    - type: not-contains
+      value: 'this series'
+

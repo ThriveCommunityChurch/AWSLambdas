@@ -15,7 +15,7 @@ AWS Lambda functions for Thrive Church automation, including podcast RSS feed ge
 │                  │     │                      │     │  • Summary (GPT)   │
 │ PodcastLambda    │     │  • Download audio    │     │  • Tags (GPT)      │
 │ Service.cs       │     │  • Azure Speech API  │     │  • Waveform        │
-│                  │     │  • Get transcript    │     │  • Update MongoDB  │
+│                  │     │  • Store transcript  │     │  • Update MongoDB  │
 └──────────────────┘     └──────────┬───────────┘     │    Messages        │
                                     │                 └─────────┬──────────┘
                                     │                           │
@@ -43,6 +43,25 @@ AWS Lambda functions for Thrive Church automation, including podcast RSS feed ge
                                                       └────────────────────┘
 ```
 
+## What Gets Generated
+
+| Content Type | Where | Description |
+|--------------|-------|-------------|
+| **Message Summary** | MongoDB `Messages.Summary` | TLDR-style, 130-180 words, uses we/us/our perspective, leads with the topic/lesson |
+| **Topical Tags** | MongoDB `Messages.Tags` | 90+ tags across 17 categories (Theological, Spiritual Disciplines, Personal Growth, etc.) |
+| **Waveform Data** | MongoDB `Messages.WaveformData` | 200-point waveform for audio player visualization |
+| **Series Summary** | MongoDB `Series.Summary` | Present-tense timeless truths about the series themes (generated when series is complete) |
+| **Podcast Description** | MongoDB `PodcastEpisodes.Description`, S3 RSS XML | Two paragraphs (130-180 words) for non-church audience, no speaker names |
+
+### Prompt Engineering
+
+All prompts have been refined through systematic evaluation using [promptfoo](https://promptfoo.dev/). Key prompt characteristics:
+
+- **Message Summaries**: TLDR-style, straightforward educational tone, first person plural (we/us/our)
+- **Series Summaries**: Present-tense timeless truths, neutral contemplative tone, varied openings
+- **Podcast Descriptions**: Two paragraphs for spiritual seekers, names specific tensions, ends with curiosity (not questions)
+- **Tags**: Comprehensive categorization using predefined tag taxonomy mapped to C# enums
+
 ### Series Summary Flow
 
 When a message is processed by `sermon_processor`, it checks if the message's series has an `EndDate` (indicating the series is complete). If so, it triggers `series_summary_processor` which:
@@ -56,10 +75,10 @@ When a message is processed by `sermon_processor`, it checks if the message's se
 
 | Lambda | Purpose |
 |--------|---------|
-| `transcription-processor` | Downloads audio, transcribes with Azure Speech API, invokes `sermon-processor` and `podcast-rss-generator` |
-| `sermon-processor` | Generates sermon summaries, tags, waveforms. Triggers `series-summary-processor` for completed series |
-| `podcast-rss-generator` | Generates podcast descriptions, updates PodcastEpisodes and RSS XML |
-| `series-summary-processor` | Generates series-level summaries from aggregated message summaries |
+| `transcription-processor` | Downloads audio from S3, transcribes with Azure Speech API, stores transcript in Azure Blob, invokes `sermon-processor` and `podcast-rss-generator` |
+| `sermon-processor` | Generates message summary (TLDR-style), tags (90+), waveform. Triggers `series-summary-processor` for completed series |
+| `podcast-rss-generator` | Generates podcast descriptions (two paragraphs, no speaker names), updates PodcastEpisodes and RSS XML |
+| `series-summary-processor` | Generates series-level summaries as present-tense timeless truths |
 
 ## Project Structure
 
@@ -71,19 +90,27 @@ AWSLambdas/
 ├── lambdas/
 │   ├── podcast_rss_generator/
 │   │   ├── handler.py
+│   │   ├── prompts/              # Prompt files
 │   │   └── requirements.txt
 │   ├── sermon_processor/
 │   │   ├── handler.py
+│   │   ├── prompts/              # Prompt files
 │   │   └── requirements.txt
 │   ├── series_summary_processor/
 │   │   ├── handler.py
+│   │   ├── prompts/              # Prompt files
 │   │   └── requirements.txt
 │   ├── transcription_processor/
 │   │   ├── handler.py
 │   │   └── requirements.txt
 │   └── shared/                   # Shared utilities
 │       └── ...
-├── scripts/                      # Utility and backfill scripts
+├── promptfoo/                    # Prompt evaluation configs and tests
+│   ├── config_*.yaml             # Evaluation configurations
+│   ├── prompts/                  # Prompt templates for evaluation
+│   ├── tests/                    # Dynamic test generators
+│   └── golden_examples/          # Reference examples
+├── scripts/                      # Backfill and utility scripts
 │   └── ...
 ├── tests/
 │   └── ...

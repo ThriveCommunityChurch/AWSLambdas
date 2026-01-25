@@ -1,0 +1,116 @@
+# Test case: Encouraging Others - Acts 11:19-26
+# Speaker: John Roth
+# This sermon explores the ministry of encouragement through Barnabas,
+# seeing God's grace in others, and coming alongside people to call forth their potential.
+# Key themes: encouragement, grace, seeing God's work, Barnabas, parakaleo
+
+- description: 'Notes - Encouraging Others (Acts 11) - Tests positive encouragement topic'
+  vars:
+    title: 'Encouraging Others'
+    speaker: 'John Roth'
+    date: '2021-02-14'
+    transcript: |
+      We are in our sixth week of our series called Neighborhoods to Nations as we look through the Book of Acts. The historical reality is that the first three centuries of the church saw explosive growth. And the question has been why?
+
+      In Acts chapter 11, we find ordinary people, ordinary followers of Jesus. Not apostles, not deacons, not people trained or appointed in any form, but just followers of Jesus sharing the gospel with Gentiles.
+
+      Let's read Acts 11:19-26. Now those who were scattered because of the persecution that arose over Stephen traveled as far as Phoenicia and Cyprus and Antioch, speaking the word to no one except Jews. But there were some of them, men of Cyprus and Cyrene, who on coming to Antioch spoke to the Hellenists also, preaching the Lord Jesus. And the hand of the Lord was with them, and a great number who believed turned to the Lord.
+
+      The report of this came to the ears of the church in Jerusalem, and they sent Barnabas to Antioch. When he came and saw the grace of God, he was glad, and he exhorted them all to remain faithful to the Lord with steadfast purpose, for he was a good man, full of the Holy Spirit and of faith. And a great many people were added to the Lord.
+
+      So Barnabas went to Tarsus to look for Saul, and when he had found him, he brought him to Antioch. For a whole year they met with the church and taught a great many people, and in Antioch the disciples were first called Christians.
+
+      David Platt said, I want to be part of something in the church that can only be explained by the hand of God. The book of Acts is filled with things that can only be explained by the hand of God.
+
+      Barnabas's name means Son of Encouragement. We're going to look at this ministry of encouragement. What encouragement is, how encouragement is lived, what is the source of that encouragement, and then your call to encourage.
+
+      The word here is parakaleo. Para means to come alongside, to be parallel with. Kaleo means to call out or call forth. Teachers come alongside children. They get down at their level. They come alongside, play with them, get to know them personally, know them by name. And they call out from them what they don't even know they can be themselves.
+
+      Parakaleo is both exhort and encourage. It's a firm word and a tender word at the same time. It's speaking the truth in love. Both together at the same time.
+
+      Why is that so important? Because we are insecure. In our society right now, you can't show your insecurities. You have to have a pretty thick armor on these days. We've become self-promoters and self-defenders. On the outside, a fortress. On the inside, a house of cards.
+
+      When somebody comes to you whom you trust, who you know loves you, who has advocated for you, who has defended you, who has been there for you, who has served you, who is by your side, who understands you, who sympathizes with you, and then speaks and calls forth truth at the same time, you have a chance of listening and growing.
+
+      In Acts 11:23, it says when he came and saw the grace of God. What he actually saw was a bunch of Gentiles and Jews and people from all sorts of different backgrounds, all together. Barnabas could see beyond the surface. He saw the grace of God at work.
+
+      You cannot be an encourager if you're going to be a Pharisee. To see the grace of God, you've got to receive the grace of God. The more you understand God's grace in your own life, the more you'll be able to celebrate God's grace in other people's lives.
+
+      When he came and saw the grace of God, he was glad. He rejoiced. He celebrated. He didn't care who got credit for it. If we see the grace of God happening in our society, wherever it is, around the world, in another nation, in another language, in another people group, by another hand, in another way, celebrate it.
+
+      He encouraged them to stay and remain faithful to the Lord. Notice he didn't force them into the law, he pointed them again and again to Jesus Christ himself.
+
+      Then Barnabas realized this work is too big for me. So Barnabas went to Tarsus to look for Saul. When Barnabas saw that, he could have easily gone back to Jerusalem and brought Peter or James. But he decides to think out of the box.
+
+      Ten years have passed since Paul's conversion. Paul has gone back to Tarsus. We have no idea what's been going on in his ministry, but nothing of note. Ten years. Silent. On hold. Nothing going on. But Barnabas sees something that Paul can do, that only Paul can do. Barnabas sees God's future, not the past of Paul. An encourager will not see your past, but your future.
+
+      Encouragement sees God's grace in circumstances. It comes alongside of people. It rejoices in the gospel in people's lives. It frees people from unnecessary rules. It sees in others what they cannot see in themselves.
+
+      How did Barnabas become like this? Acts 11:24 says he was a good man, full of the Holy Spirit. One of the names given the Holy Spirit in the Gospel of John is paraclete, from the word parakaleo. The Holy Spirit is the helper, the comforter, the advocate, the encourager.
+
+      Where Barnabas got his source for being such an encourager was not that he was a positive thinker. He wasn't just a natural optimist. He looked to Jesus, who was his paraclete, his advocate, the one who came alongside of us.
+
+      Jesus Christ did not just come alongside of us. He became one with us. The Word becomes flesh. He's closer to you than you are to yourself. He knows you better than you know you. He comes alongside of you, and then he calls forth.
+
+      Leadership is not about position. Barnabas may have been more important to the early church than Paul because of his ministry and how he connected it all together.
+
+      I am calling you to be encouragers. Encouragement requires us to get close to people so that we care about them. Who are you allowing in? Who's getting close to you? And who are you open to get close to?
+  assert:
+    - type: javascript
+      value: |
+        // Check that summary doesn't start with imperative verb
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = json.summary || '';
+        const firstWord = summary.trim().split(/\s+/)[0].toLowerCase();
+        const banned = ['stop', 'start', 'begin', 'let', 'take', 'make', 'do', "don't", 'encourage'];
+        return !banned.includes(firstWord);
+    - type: javascript
+      value: |
+        // Verify keyPoints array has at least 2 items
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        return json.keyPoints && json.keyPoints.length >= 2;
+    - type: javascript
+      value: |
+        // Check that mainScripture references Acts 11
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const scripture = (json.mainScripture || '').toLowerCase();
+        return scripture.includes('acts') && scripture.includes('11');
+    # ACCURACY VALIDATIONS
+    - type: javascript
+      value: |
+        // Verify quotes appear in transcript (fuzzy match - at least 60% of words)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const transcript = context.vars.transcript.toLowerCase();
+        const quotes = json.quotes || [];
+        if (quotes.length === 0) return true;
+
+        function wordOverlap(quote, text) {
+          const quoteWords = quote.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => w.length > 3);
+          if (quoteWords.length === 0) return 1;
+          const matchCount = quoteWords.filter(w => text.includes(w)).length;
+          return matchCount / quoteWords.length;
+        }
+
+        const failed = quotes.filter(q => wordOverlap(q.text, transcript) < 0.6);
+        return failed.length === 0;
+    - type: javascript
+      value: |
+        // Verify scripture references were mentioned in transcript
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const transcript = context.vars.transcript.toLowerCase();
+
+        const scriptures = [];
+        if (json.mainScripture) scriptures.push(json.mainScripture);
+        (json.keyPoints || []).forEach(kp => { if (kp.scripture) scriptures.push(kp.scripture); });
+
+        const failed = scriptures.filter(ref => {
+          if (!ref || ref.trim() === '') return false;
+          const refLower = ref.toLowerCase();
+          const bookMatch = refLower.match(/^(\d?\s*[a-z]+)/);
+          if (!bookMatch) return false;
+          const book = bookMatch[1].replace(/\s+/g, ' ').trim();
+          return !transcript.includes(book);
+        });
+
+        return failed.length === 0;
+

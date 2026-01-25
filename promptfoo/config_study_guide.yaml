@@ -1,0 +1,47 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: 'Study Guide Evaluation'
+
+providers:
+  - id: azure:chat:gpt-5-mini
+    label: azure-gpt-5-mini
+    config:
+      apiHost: domain.openai.azure.com
+      apiVersion: '2024-10-21'
+      max_tokens: 8000
+      response_format:
+        type: json_object
+      timeout: 180000
+
+defaultTest:
+  options:
+    timeout: 180000
+  assert:
+    - type: not-contains
+      value: 'Join us as we'
+    - type: not-contains
+      value: 'Come discover'
+    - type: not-contains
+      value: 'In this powerful message'
+    - type: not-contains
+      value: 'This life-changing sermon'
+    - type: not-contains
+      value: 'this transformative message'
+    - type: not-contains
+      value: 'this incredible sermon'
+    - type: is-json
+
+prompts:
+  - id: study_guide
+    label: Study Guide
+    raw: file://prompts/study_guide_prompt.txt
+
+tests:
+  - file://tests/study_guide_forgiving_test.yaml
+  - file://tests/study_guide_psalm37_test.yaml
+  - file://tests/study_guide_doubt_test.yaml
+  - file://tests/study_guide_joy_test.yaml
+  - file://tests/study_guide_lust_test.yaml
+  - file://tests/study_guide_loneliness_test.yaml
+  - file://tests/study_guide_bearing_burdens_test.yaml
+  - file://tests/study_guide_recovering_hypocrite_test.yaml
+

@@ -1,0 +1,63 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: 'Podcast Summary Prompt Evaluation (General Public Audience)'
+
+# NOTE: gpt-5-mini uses reasoning tokens that consume the token budget
+# We need high max_completion_tokens to allow for reasoning + output
+# Podcast descriptions are plain text (not JSON) to match the actual Lambda
+providers:
+  - id: azure:chat:gpt-5-mini
+    label: azure-gpt-5-mini
+    config:
+      apiHost: domain.openai.azure.com
+      apiVersion: '2024-10-21'
+      max_completion_tokens: 50000
+      reasoning_effort: low
+      timeout: 300000
+
+# Plain text output - matching the actual Lambda behavior
+defaultTest:
+  options:
+    timeout: 180000
+  assert:
+    - type: not-contains
+      value: 'You are invited to'
+    - type: not-contains
+      value: "You're invited to"
+    - type: not-contains
+      value: 'Join us as we'
+    - type: not-contains
+      value: 'Come discover'
+    - type: not-contains
+      value: 'In this powerful message'
+    - type: not-contains
+      value: 'This life-changing sermon'
+    - type: not-contains
+      value: 'the Word'
+    - type: not-contains
+      value: 'fellowship'
+    - type: not-contains
+      value: 'sanctification'
+    # Check word count is reasonable (100-300 words)
+    - type: javascript
+      value: |
+        const words = output.split(/\s+/).filter(w => w.length > 0).length;
+        return words >= 100 && words <= 300;
+
+prompts:
+  - id: podcast_summary
+    label: Podcast Summary
+    raw: |
+      [{"role": "system", "content": "You are a content writer creating podcast episode descriptions for a church's sermon podcast. Your audience is the GENERAL PUBLIC - people who may have no church background, no familiarity with Christian terminology, and no prior relationship with this church. Write for curious seekers, not insiders.\n\nCRITICAL RULES:\n1. Write for someone who has never been to church - avoid insider language\n2. Name the tension or question the listener might already be feeling before offering the message's perspective\n3. Be honest about what the message covers without overselling or using hype language\n4. Use accessible language - if you must use a religious term, briefly explain it\n5. The description should make someone curious enough to press play, not summarize everything\n6. Do NOT mention the church name, location, or any promotional content\n7. Keep the tone warm, thoughtful, and grounded - not preachy or salesy\n\nBANNED PHRASES:\n- 'You are invited to...' or 'You're invited to...'\n- 'Join us as we...'\n- 'Come discover...'\n- 'In this powerful message...'\n- 'This life-changing sermon...'\n- Churchy jargon without explanation (the Word, fellowship, sanctification, etc.)\n\nGOOD OPENING PATTERNS (vary these):\n- Start with a relatable tension: 'You notice people who cheat often seem to get ahead...'\n- Start with a question: 'What if true wisdom shows up not in power but in small, surprising places?'\n- Start with an observation: 'Too often our days are full of noise—endless scrolling, to-do lists...'\n- Start with a scenario: 'Imagine being told you have what it takes to achieve the impossible.'\n\nOUTPUT FORMAT:\n- Write 2 paragraphs (150-200 words total)\n- First paragraph names the relatable tension or question\n- Second paragraph previews the message's angle and what the listener can expect\n- Separate paragraphs with a blank line\n- Return ONLY the description text - no JSON, no markdown, no explanation"}, {"role": "user", "content": "SERMON METADATA:\n- Title: {{title}}\n- Speaker: {{speaker}}\n- Date: {{date}}\n\nTRANSCRIPT:\n{{transcript}}\n\nWrite a 2-paragraph podcast description (150-200 words total) for the general public. Return ONLY the description text."}]
+
+tests:
+  - file://tests/podcast_forgiving_test.yaml
+  - file://tests/podcast_psalm37_test.yaml
+  - file://tests/podcast_doubt_test.yaml
+  - file://tests/podcast_joy_test.yaml
+  # New diverse test cases
+  - file://tests/podcast_lust_test.yaml
+  - file://tests/podcast_jesus_is_offensive_test.yaml
+  - file://tests/podcast_loneliness_test.yaml
+  - file://tests/podcast_recovering_hypocrite_test.yaml
+  - file://tests/podcast_be_anxious_test.yaml
+

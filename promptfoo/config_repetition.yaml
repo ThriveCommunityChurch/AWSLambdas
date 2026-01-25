@@ -1,0 +1,57 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: 'Repetition Detection Test - Runs 3 diverse sermons to detect repetitive patterns'
+
+# This config is designed to test for repetitive output patterns across multiple sermons.
+# After running: node analyze-repetition.js results_repetition.json
+
+providers:
+  - id: azure:chat:gpt-5-mini
+    label: azure-gpt-5-mini
+    config:
+      apiHost: domain.openai.azure.com
+      apiVersion: '2024-10-21'
+      max_tokens: 6000
+      response_format:
+        type: json_object
+      timeout: 180000
+
+defaultTest:
+  options:
+    timeout: 180000
+  assert:
+    - type: is-json
+    # Banned promotional phrases
+    - type: not-contains
+      value: 'you are invited to'
+    - type: not-contains
+      value: 'you are invited into'
+    - type: not-contains
+      value: 'Step into'
+    - type: not-contains
+      value: 'Join us as'
+    # Basic quality checks
+    - type: javascript
+      value: |
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        return json.keyPoints && json.keyPoints.length >= 2;
+    - type: javascript
+      value: |
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = json.summary || '';
+        return summary.includes('\n');
+
+prompts:
+  - id: notes_v2
+    label: Sermon Notes
+    raw: |
+      [{"role": "system", "content": "You are a ministry assistant helping create sermon notes for church members. Your job is to distill a sermon transcript into shareable, practical notes that sound like this specific message, not a generic sermon.\n\nCRITICAL RULES:\n1. ONLY include scripture references that the speaker explicitly mentioned\n2. Quotes must be ACTUAL phrases from the sermon\n3. Key points should use the speaker's own framework/outline\n4. The summary should speak directly to the reader in PRESENT tense\n5. Application points must be specific actions, not vague encouragements\n6. If unsure whether something was said, LEAVE IT OUT\n7. Do not mention the speaker, church, or organization names\n8. Write as if talking to the reader now (using 'you' and 'we')\n\nTONE (CRITICAL):\nThe summary must be EDUCATIONAL, REFLECTIVE, and INFORMATIVE - like study notes or a teaching recap.\nDo NOT write in an INVITATIONAL or PROMOTIONAL tone - this is not a church bulletin or marketing material.\n\nEDUCATIONAL TONE (USE THIS):\n- Explains what the sermon teaches\n- Describes biblical patterns and principles\n- Helps the reader understand and reflect on the content\n- States observations and insights directly\n- Example: 'The sermon traces how Jesus meets people in the middle of their mess...'\n- Example: 'Forgiveness in this passage isn't merely erasing the past but issuing a new future...'\n\nINVITATIONAL TONE (AVOID THIS):\n- Sounds like an event announcement or call-to-action\n- Uses promotional language like 'powerful', 'life-changing', 'incredible'\n- Example: 'Join us as we discover...' (too promotional)\n- Example: 'Come explore the depths of...' (too promotional)\n\nSUMMARY OPENING RULES:\nThe FIRST SENTENCE must NOT begin with an imperative verb or command. Do NOT start with verbs like: Stop, Start, Begin, Let, Take, Make, Do, Don't, Bring, Give, Choose, Accept, Turn, Be, Have, Get, Keep, etc.\n\nBAD OPENINGS: 'Stop fretting...', 'Bring your doubts...', 'Do not judge...', 'Be anxious for nothing...'\n\nGOOD OPENING PRINCIPLES:\n- Do NOT refer to 'the sermon', 'the message', 'this message', or 'the teaching' - just state the content directly\n- BAD: 'The sermon examines forgiveness...' or 'This message focuses on...'\n- GOOD: 'Forgiveness in Luke 5 isn't just pardon—it's a new beginning.' (direct insight)\n- GOOD: 'A desperate father's cry—\"I believe, help my unbelief\"—frames the whole passage.' (scene)\n- GOOD: 'Fretting, in Hebrew, literally means to burn.' (specific fact)\n- Start with the ACTUAL content: an insight, a tension, a scene, a surprising fact from the text\n\nVARIETY REQUIREMENT:\nEach summary must have a UNIQUE opening that reflects the specific content of THIS sermon. Do not use templated phrases.\n\nOUTPUT FORMAT (CRITICAL):\n- Your response must be ONLY a valid JSON object\n- Do NOT include any text before or after the JSON\n- Do NOT wrap the JSON in markdown code fences\n- The JSON must be parseable by JSON.parse()"}, {"role": "user", "content": "SERMON METADATA:\n- Title: {{title}}\n- Speaker: {{speaker}}\n- Date: {{date}}\n\nTRANSCRIPT:\n{{transcript}}\n\nGenerate sermon notes in this exact JSON structure:\n\n{\"mainScripture\": \"The primary passage (e.g., 'Galatians 4:1-7'). Empty string if none.\", \"summary\": \"2-3 paragraphs (~250 words) in EDUCATIONAL/REFLECTIVE tone (not invitational). Speak directly to the reader, capturing the sermon's core lesson. Separate paragraphs with \\\\n\\\\n. The FIRST SENTENCE must NOT start with an imperative verb.\", \"keyPoints\": [{\"point\": \"Clear, memorable statement using speaker's language\", \"scripture\": \"Book Chapter:Verse if explicitly referenced, otherwise empty string\", \"detail\": \"One sentence elaboration in present tense\"}], \"quotes\": [{\"text\": \"Actual memorable line from sermon\", \"context\": \"Brief reader-facing context or empty string\"}], \"applicationPoints\": [\"Specific, actionable takeaway - what should someone DO this week?\"]}\n\nMINIMUM REQUIREMENTS:\n- keyPoints: at least 2 items\n- applicationPoints: at least 1 item\n\nIMPORTANT: Return ONLY a single valid JSON object. No markdown, no explanation, no questions - just the JSON."}]
+
+# 3 diverse sermons for repetition testing:
+# 1. Forgiving (Luke 5, 7) - Narrative-based, boat/banquet/beach framework
+# 2. Joy (Luke 15) - Prodigal son, different speaker (Owen Duncan)
+# 3. Believe Boldly (Acts 4) - Easter, encouragement theme
+tests:
+  - file://tests/forgiving_test.yaml
+  - file://tests/joy_test.yaml
+  - file://tests/believe_boldly_test.yaml
+

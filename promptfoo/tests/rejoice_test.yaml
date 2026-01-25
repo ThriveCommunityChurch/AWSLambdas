@@ -1,0 +1,118 @@
+# Test case: Rejoice - Nehemiah 8
+# Speaker: John Roth
+# This sermon explores joy as the reality of who God is, the joy of the Lord as our strength,
+# and Sabbath as a time to enjoy God and His creation.
+# Key themes: joy, rejoice, Sabbath, God's character, celebration
+
+- description: 'Notes - Rejoice (Nehemiah 8) - Tests positive joy and celebration topic'
+  vars:
+    title: 'Rejoice'
+    speaker: 'John Roth'
+    date: '2020-07-05'
+    transcript: |
+      We're in our second message on replenish, and we are going to be talking about rejoicing. At the heart of creation, in the heart of redemption, in the heart of salvation, is God's joy. And his joy becomes our replenishment of our souls.
+
+      Let's read from Nehemiah chapter 8. And Nehemiah, who was the governor, and Ezra the priest and scribe, and the Levites who taught the people, said to all the people, This day is holy to the Lord your God. Do not mourn or weep. For all the people wept as they heard the words of the law. Then he said to them, Go your way, eat the fat, and drink sweet wine, and send portions to anyone who has nothing ready. For this day is holy to the Lord, and do not be grieved, for the joy of the Lord is your strength.
+
+      What comes to our minds when we think of God is the most important thing about us. How you see God determines how you really see yourself, and this world, and other people.
+
+      If you believe that God is love, not power, not just about justice, but about love, all loving, all joy, then you have a whole different picture of being in God's presence. The fact that he enjoys you being with him, wants you to be with him.
+
+      Dallas Willard talks about God's character. He writes, God is the most joyous being in the universe. The abundance of his love and generosity is inseparable from his infinite joy. All the good and beautiful things from which we occasionally drink tiny droplets of soul-exhilarating joy, God continually experiences in all their breadth and depth and richness.
+
+      God is this community of joy. Even in the book of Job, God confronts Job and says, Where were you when I laid the earth's foundation? While the morning stars sang together and all the angels shouted for joy.
+
+      God says it was a celebration when he created the world. He rejoiced in it. He celebrated. The angels of God created a chorus of beings who would be with him to celebrate and to party over all that he had made.
+
+      Joy is not a distraction from the reality of what life really is like. Joy is the reality of how God has always intended and how God has always undergirded and how God will bring to the end the experience of joy.
+
+      Happiness is based on circumstances. But joy is really happiness based on God's purposes and promises. It's fundamental to why he built this world as his temple to dwell within all of his creation.
+
+      The Bible would say the world will end in celebration, in joy. Read the end of the book of Revelation and you see how it ends when God inhabits, and his glory inhabits, and we are celebrating. And there are no more tears, and no more death, and no more gloom. And there is continual celebration and joy.
+
+      Nehemiah came back to Jerusalem. The walls were destroyed and in ruin. The city was a mess. But Nehemiah was not only concerned with rebuilding the walls of Jerusalem, but also passionate about restoring the hearts of the people.
+
+      He could have threatened the people that God's wrath would come down on them if they didn't finish the work. Or he could have instilled fear in them. Or he could try to guilt them or shame them. But those things only get you so far and they all diminish the soul.
+
+      But joy, when the people realize that the end purpose is not just building walls, but being inhabited by God in themselves and in their community. When they know the joy of the Lord, he says, it will be their strength.
+
+      Joy is not a means just to hard work. It's actually that which restores your soul, your life. Even when they had been hearing the law of God and realized how they had broken the commandments, he says, No, don't just get stuck and wallow in your grief or repentance, but go out. This is a day that is set holy to the Lord.
+
+      God's joy over you. God's joy over creation. God's joy over his redemption. God's super abundance beyond all the measly things that we've done in our lives. His perspective is one still of joy. And that becomes your strength.
+
+      Joy is not momentary. Joy is what you will experience as the default of eternity. And you get to experience the joy of God moment by moment, day by day, no matter your circumstances, up or down, because God is with you and God rejoices in your presence and God wants to be with you.
+
+      Nehemiah said, this day is holy to the Lord. Holy means to set aside, to take aside and put aside time, a day or objects or people or things or events to be used only and to be led by God.
+
+      Timothy Keller says, according to the Bible, the Sabbath is about more than just taking time off. After creating the world, God looked around and saw that it was very good. God did not just cease from his labor. He stopped and enjoyed what he made. We need to stop and enjoy God, to enjoy his creation, to enjoy the fruits of our labor.
+
+      Sabbath is a little piece of eternity of God's joy in the midst of time. It's a time where we get to refresh, be replenished and enjoy. A time to stop trying and working and planning and attempting and scheming and organizing and sweating and controlling and moving and improving and simply just to receive, to rejoice, to celebrate, to recreate.
+
+      We rest from having to work. We rest from any notion that our value to God is based on what we can do and how much we work. It's not a performance. Instead, we realize we are loved simply because he made us and we are his.
+
+      Sabbath reminds me regularly that I am accepted by God not by what I do or what I can accomplish, but by whose I am, that I am his.
+
+      In the book of Hebrews, the writer describes Jesus himself and the joy he had, the joy that was set before him, that he would endure the cross, scorning its shame. The joy that was set before Jesus was not because that moment was over, but because he saw you in that moment and the future you would have with him. His joy is that he gets to spend eternity with you.
+
+      Abraham Herschel, a rabbi, said, a man who works with his hands will Sabbath with his mind. A man who works with his mind will Sabbath with his hands. Find something different to do, something you love to do that you don't get to do for work.
+
+      Do you have a day to rejoice regularly? Not to work for the weekend and then party your brains out as if it's time away from God, but a day to celebrate with God, to fellowship with him and with others.
+  assert:
+    - type: javascript
+      value: |
+        // Check that summary doesn't start with imperative verb
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = json.summary || '';
+        const firstWord = summary.trim().split(/\s+/)[0].toLowerCase();
+        const banned = ['stop', 'start', 'begin', 'let', 'take', 'make', 'do', "don't", 'rejoice'];
+        return !banned.includes(firstWord);
+    - type: javascript
+      value: |
+        // Verify keyPoints array has at least 2 items
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        return json.keyPoints && json.keyPoints.length >= 2;
+    - type: javascript
+      value: |
+        // Check that mainScripture references Nehemiah 8
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const scripture = (json.mainScripture || '').toLowerCase();
+        return scripture.includes('nehemiah') && scripture.includes('8');
+    # ACCURACY VALIDATIONS
+    - type: javascript
+      value: |
+        // Verify quotes appear in transcript (fuzzy match - at least 60% of words)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const transcript = context.vars.transcript.toLowerCase();
+        const quotes = json.quotes || [];
+        if (quotes.length === 0) return true;
+
+        function wordOverlap(quote, text) {
+          const quoteWords = quote.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => w.length > 3);
+          if (quoteWords.length === 0) return 1;
+          const matchCount = quoteWords.filter(w => text.includes(w)).length;
+          return matchCount / quoteWords.length;
+        }
+
+        const failed = quotes.filter(q => wordOverlap(q.text, transcript) < 0.6);
+        return failed.length === 0;
+    - type: javascript
+      value: |
+        // Verify scripture references were mentioned in transcript
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const transcript = context.vars.transcript.toLowerCase();
+
+        const scriptures = [];
+        if (json.mainScripture) scriptures.push(json.mainScripture);
+        (json.keyPoints || []).forEach(kp => { if (kp.scripture) scriptures.push(kp.scripture); });
+
+        const failed = scriptures.filter(ref => {
+          if (!ref || ref.trim() === '') return false;
+          const refLower = ref.toLowerCase();
+          const bookMatch = refLower.match(/^(\d?\s*[a-z]+)/);
+          if (!bookMatch) return false;
+          const book = bookMatch[1].replace(/\s+/g, ' ').trim();
+          return !transcript.includes(book);
+        });
+
+        return failed.length === 0;
+

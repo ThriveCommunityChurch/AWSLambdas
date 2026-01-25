@@ -1,0 +1,66 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: 'Podcast Description Evaluation - Live MongoDB Data'
+
+# Set PODCAST_EVAL_LIMIT env var to control how many episodes to test (default: 5)
+
+# NOTE: Podcast descriptions are plain text output (not JSON)
+# gpt-5-mini uses reasoning tokens; needs high max_completion_tokens
+providers:
+  - id: azure:chat:gpt-5-mini
+    label: azure-gpt-5-mini
+    config:
+      apiHost: domain.openai.azure.com
+      apiVersion: '2024-10-21'
+      max_completion_tokens: 50000
+      reasoning_effort: low
+      timeout: 300000
+
+defaultTest:
+  options:
+    timeout: 180000
+  assert:
+    # Meta-language phrases
+    - type: not-contains
+      value: 'In this episode'
+    - type: not-contains
+      value: 'Join us'
+    - type: not-contains
+      value: 'This week'
+    - type: not-contains
+      value: 'This message explores'
+    - type: not-contains
+      value: 'This sermon invites'
+    # Discovery cliches
+    - type: not-contains
+      value: "you'll discover"
+    - type: not-contains
+      value: "you'll learn"
+    - type: not-contains
+      value: "you'll find"
+    - type: not-contains
+      value: "you'll be challenged"
+    # Overused words
+    - type: not-contains
+      value: 'transformative'
+    - type: not-contains
+      value: 'transformation'
+    - type: not-contains
+      value: 'profound'
+    # Rhetorical closing questions
+    - type: not-contains
+      value: 'How will you respond?'
+    - type: not-contains
+      value: 'What will you do?'
+    - type: not-contains
+      value: 'Are you ready?'
+    - type: not-contains
+      value: 'How might your life change?'
+
+prompts:
+  - id: podcast_description
+    label: Podcast Description
+    raw: file://prompts/podcast_description_prompt.txt
+
+tests:
+  - file://tests/podcast_description_dynamic.js
+

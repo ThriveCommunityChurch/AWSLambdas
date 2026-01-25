@@ -1,0 +1,43 @@
+- description: 'Podcast - Doubt (Mark 9) - Tests emotional topic for general audience'
+  vars:
+    title: 'Doubt'
+    speaker: 'John Roth'
+    date: '2019-03-03'
+    transcript: |
+      Welcome to Thrive. We're starting a new sermon series today. Jesus, I have my doubts. Often in a Christian church, Sunday morning is kind of an exercise in whipping up believism. People believing and believing in faith, in faith itself.
+
+      In large swaths of Christianity, no one can really talk about their weaknesses or their waverings or any doubts. If you admit a negative thought, if you question anything, if you're facing grief or sadness, well, all these are a sign of a weak faith, and you are almost shunned.
+
+      I think there has been a don't ask, don't tell policy. Don't ask if somebody's really doing okay. Don't tell anybody any of your struggles.
+
+      We all have doubts, we all have times of sadness, we are all anxious. If you read the Bible honestly, you find it's filled with doubts and temptations and struggles.
+
+      Jude 1:22 says, Be merciful to those who doubt. And Jude probably did doubt - he is the half-brother of Jesus. I don't know if we Christians have really been merciful to those who doubt.
+
+      Let's read Mark 9, verses 14 to 29. When they came to the disciples, they saw a great crowd around them and the scribes arguing with them. Someone from the crowd answered, Teacher, I brought my son to you, for he has a spirit that makes him mute.
+
+      Jesus answered them, Oh, faithless generation, how long am I to be with you? Bring him to me. Jesus asked the father, How long has this been happening? And he said, From childhood. But if you can do anything, have compassion on us and help us.
+
+      Jesus said to him, If you can - all things are possible for one who believes. Immediately, the father of the child cried out, I believe. Help my unbelief.
+
+      The disciples had faith, but what was their faith in? They had cast out demons before. They assumed they could just do it whenever they felt like it. That is actually unfaith. True faith is not faith in itself. True faith continually looks outside of itself.
+
+      Timothy Keller puts it this way: Helplessness, not holiness, is the first step to access the presence and power of God.
+
+      The Father is honest. He believed, he also has unbelief. He's confused, struggling. And Jesus says, I can work with that. You don't have to get rid of your doubts to come to Jesus. You can bring your doubts to him.
+  assert:
+    - type: javascript
+      value: |
+        // Check that description doesn't start with imperative verb
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const description = json.description || '';
+        const firstWord = description.trim().split(/\s+/)[0].toLowerCase();
+        const banned = ['stop', 'start', 'begin', 'let', 'take', 'make', 'do', "don't", 'doubt'];
+        return !banned.includes(firstWord);
+    - type: javascript
+      value: |
+        // Check description is 100-300 words
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const description = json.description || '';
+        const wordCount = description.split(/\s+/).filter(w => w.length > 0).length;
+        return wordCount >= 100 && wordCount <= 300;

@@ -1,0 +1,49 @@
+- description: 'Podcast - Joy (Luke 15) - Tests positive topic for general audience'
+  vars:
+    title: 'Joy'
+    speaker: 'Owen Duncan'
+    date: '2024-12-08'
+    transcript: |
+      I'm Pastor Owen Duncan, Associate Pastor at Faith Lutheran Church in Naples. I'm filling in for Pastor Roth, who's out doing a mission trip with college students.
+
+      You're doing this series, Emotional Jesus, and I got joy. Last week was about Jesus being sad. Compassion wasn't too bad. But joy is an easy one, right?
+
+      I remember a kid at Oktoberfest running around telling everyone: They're about to bring out the ice cream! That's joy. That excitement you just can't keep in, it changes how you look at everything.
+
+      We're going to talk about it in Luke chapter 15, where Jesus tells a parable about what gives him the greatest joy. But first, context matters. Luke 15:1-2 says: Now the tax collectors and sinners were all drawing near to hear Jesus. And the Pharisees and the scribes grumbled, saying, This man receives sinners and eats with them.
+
+      The Pharisees are usually the bad guys, famous for their hypocrisy. But in their day, the Pharisees were the faithful religious leaders, like the pastors of their time. What's driving them here is a sense of justice, of wanting things to be fair.
+
+      There was a man who had two sons. And the younger of them said to his father, Father, give me the share of property that is coming to me. And his father divided his property between them.
+
+      Not many days later, the younger son gathered all he had and took a journey into a far country. And there he squandered his property in reckless living. When he had spent everything, a severe famine arose.
+
+      The son came to himself and said, I will arise and go to my father and say, Father, I have sinned against heaven and before you. I am no longer worthy to be called your son.
+
+      But while he was still a long way off, his father saw him and felt compassion and ran and embraced him and kissed him. The father said to his servants, Bring quickly the best robe and put it on him. For this my son was dead and is alive again. He was lost and is found.
+
+      The father doesn't even give the son a chance to apologize. Caught up in his joy with his son being restored, he forgets all about justice.
+
+      What is the parable about? By telling a story, Jesus is inviting us into a different way of thinking. He's beckoning the Pharisees into a world not ruled by justice, but by mercy, by the grace of God. A world where debts are forgotten and sins are forgiven.
+
+      This is the joy of Jesus. Hebrews tells us: Let us look to Jesus who for the joy that was set before him endured the cross, despising the shame.
+
+      Jesus calls you to leave behind this world of justice and come into his world of grace.
+  assert:
+    - type: javascript
+      value: |
+        // Check that description doesn't start with imperative verb
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const description = json.description || '';
+        const firstWord = description.trim().split(/\s+/)[0].toLowerCase();
+        const banned = ['stop', 'start', 'begin', 'let', 'take', 'make', 'do', "don't", 'join', 'come', 'discover'];
+        return !banned.includes(firstWord);
+    - type: javascript
+      value: |
+        // Check description is 100-300 words
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const description = json.description || '';
+        const wordCount = description.split(/\s+/).filter(w => w.length > 0).length;
+        return wordCount >= 100 && wordCount <= 300;
+    - type: not-contains
+      value: "Join us as we"

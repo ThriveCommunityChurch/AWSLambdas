@@ -1,0 +1,53 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: 'Sermon Summary Repetition Test - Runs 5 sermons to detect cross-example patterns'
+
+# This config tests for repetitive patterns ACROSS multiple sermon summaries.
+# After running: node analyze-sermon-summary-repetition.js results_sermon_summary_repetition.json
+
+providers:
+  - id: azure:chat:gpt-5-mini
+    label: azure-gpt-5-mini
+    config:
+      apiHost: domain.openai.azure.com
+      apiVersion: '2024-10-21'
+      max_tokens: 6000
+      response_format:
+        type: json_object
+      timeout: 180000
+
+defaultTest:
+  options:
+    timeout: 180000
+  assert:
+    - type: is-json
+    # Basic banned phrases (individual test)
+    - type: not-contains
+      value: 'Join us as we'
+    - type: not-contains
+      value: 'this sermon invites you'
+    - type: not-contains
+      value: 'this message invites you'
+    - type: not-contains
+      value: "you'll discover"
+    - type: not-contains
+      value: "you'll be challenged"
+    - type: not-contains
+      value: "you'll be encouraged"
+    - type: not-contains
+      value: 'In a world'
+    - type: not-contains
+      value: 'How will you respond'
+
+prompts:
+  - id: sermon_summary
+    label: Sermon Summary
+    raw: file://prompts/sermon_summary_prompt.txt
+
+# 5 diverse sermons for repetition testing
+tests:
+  - file://tests/sermon_summary_bearing_burdens_test.yaml
+  - file://tests/sermon_summary_grateful_grind_test.yaml
+  - file://tests/sermon_summary_encouraging_others_test.yaml
+  - file://tests/sermon_summary_growing_grace_test.yaml
+  - file://tests/sermon_summary_sowing_reaping_test.yaml
+

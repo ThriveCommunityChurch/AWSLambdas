@@ -1,0 +1,56 @@
+# Test case: "Loneliness" - Emotional topic referencing Surgeon General's 2023 loneliness epidemic report
+# Speaker: John Roth
+# This tests the model's ability to handle pastoral/counseling content
+- description: 'Study Guide - Loneliness (pastoral/counseling content)'
+  vars:
+    title: "Loneliness"
+    speaker: "John Roth"
+    date: "2023-12-10"
+    transcript: |
+      You are listening to a message from Thrive Community Church, a church located in Southwest Florida. For more info, visit us at thrive-fl.org. Lord God, we thank you for this day. We thank you for the opportunity to gather together. We thank you for your presence with us. And we pray, Lord God, that you would bless this time together. We pray that your word would be over us, your truth would be in us, your peace would be upon us. And we pray, Lord God, that you would work through this message to give us the courage to trust you always, to live according to your promises, to walk out into this world and be up to the calling you've given us. All this we lift up to you in Jesus' name. Amen. So I want to talk about something today that I think is one of the most pressing issues of our time. And that is loneliness. In May of 2023, the Surgeon General of the United States, Dr. Vivek Murthy, issued an advisory declaring loneliness and isolation to be an epidemic in America. He said that loneliness is as dangerous to our health as smoking 15 cigarettes a day. He said that loneliness increases the risk of heart disease by 29%, the risk of stroke by 32%, and the risk of dementia by 50%. He said that loneliness is associated with higher rates of depression, anxiety, and suicide. And he said that loneliness is not just a personal problem, but a public health crisis. Now, you might think that loneliness is something that only affects certain people. Maybe the elderly. Maybe those who live alone. Maybe those who are socially awkward. But the research shows that loneliness affects everyone. In fact, the research shows that young people are actually more lonely than older people. One study found that 61% of young adults reported feeling lonely. Another study found that the average American has only one close friend, down from three close friends in 1985. We are more connected than ever through technology, and yet we are more lonely than ever. We have hundreds of friends on social media, and yet we feel like we have no one to talk to. We are surrounded by people, and yet we feel alone. So what's going on? Why are we so lonely? I think there are a few reasons. First, we are busier than ever. We work longer hours. We have more commitments. We have more activities. We have more screens competing for our attention. And in the midst of all that busyness, we don't have time for deep relationships. We don't have time to sit with a friend and just talk. We don't have time to be present with someone. We're always rushing to the next thing. Second, we are more mobile than ever. We move for jobs. We move for school. We move for family. We move for opportunity. And every time we move, we leave behind relationships. We leave behind community. We leave behind the people who know us and love us. And we have to start over. And starting over is hard. Building new relationships takes time and effort. And so we end up with a lot of acquaintances but few deep friendships. Third, we are more individualistic than ever. Our culture tells us that we don't need anyone. Our culture tells us that we should be self-sufficient. Our culture tells us that asking for help is a sign of weakness. And so we try to do everything on our own. We try to handle our problems on our own. We try to carry our burdens on our own. And we end up isolated and alone. Fourth, we are more afraid than ever. We are afraid of being rejected. We are afraid of being judged. We are afraid of being hurt. And so we put up walls. We keep people at a distance. We don't let anyone get too close. Because if they get too close, they might see the real us. And if they see the real us, they might not like what they see. And so we hide. We pretend. We wear masks. And we end up lonely. Now, here's the thing. God did not create us to be alone. In the very beginning, in the Garden of Eden, God said, It is not good for man to be alone. That's the first time in the Bible that God says something is not good. Everything else God created, he said it was good. But when he saw Adam alone, he said, That's not good. And so he created Eve. He created community. He created relationship. Because we were made for connection. We were made for relationship. We were made for community. And when we don't have that, something is wrong. Something is missing. Something is not good. So what do we do about loneliness? Well, I think the first thing we need to do is acknowledge it. We need to admit that we are lonely. We need to stop pretending that everything is fine. We need to stop putting on a brave face. We need to be honest with ourselves and with others about how we are really doing. Because you can't address a problem that you won't acknowledge. The second thing we need to do is reach out. We need to take the initiative to connect with others. We need to invite someone to coffee. We need to join a small group. We need to volunteer somewhere. We need to show up. Because relationships don't just happen. They take effort. They take intentionality. They take risk. And yes, it's scary. Yes, you might get rejected. Yes, you might get hurt. But the alternative is worse. The alternative is loneliness. The third thing we need to do is be present. We need to put down our phones. We need to turn off our screens. We need to look people in the eye. We need to listen. We need to be fully present with the people in front of us. Because you can't have a deep relationship with someone if you're always distracted. You can't connect with someone if you're always looking at your phone. You can't know someone if you're not paying attention. The fourth thing we need to do is be vulnerable. We need to let people in. We need to share our struggles. We need to admit our weaknesses. We need to take off our masks. Because you can't have a deep relationship with someone if they don't know the real you. You can't be truly known if you're always hiding. You can't be truly loved if you're always pretending. And yes, vulnerability is scary. Yes, you might get hurt. But the alternative is worse. The alternative is loneliness. The fifth thing we need to do is trust God. Because ultimately, our deepest loneliness can only be satisfied by God. Augustine said, Our hearts are restless until they find their rest in you. We were made for relationship with God. And when we don't have that relationship, we will always feel a sense of loneliness, no matter how many friends we have. So we need to cultivate our relationship with God. We need to spend time with him in prayer. We need to read his word. We need to worship him. We need to trust him. Because he is the one who will never leave us or forsake us. He is the one who is always with us. He is the one who knows us fully and loves us completely. And when we have that relationship with God, we can face the loneliness of this world. We can reach out to others. We can be vulnerable. We can take risks. Because we know that even if everyone else abandons us, God never will. Let me close with this. If you are lonely today, I want you to know that you are not alone. God is with you. And this church is here for you. We want to know you. We want to walk with you. We want to be in community with you. So don't suffer in silence. Reach out. Connect. Be present. Be vulnerable. And trust God. Because he has something better for you than loneliness. He has community. He has relationship. He has love. Let's pray. Lord God, we thank you that you are with us. We thank you that you never leave us or forsake us. We thank you that you know us fully and love us completely. Lord, we confess that we are often lonely. We confess that we have put up walls. We confess that we have been afraid to let people in. Forgive us, Lord. Help us to reach out. Help us to be present. Help us to be vulnerable. Help us to trust you. And help us to find the community and relationship that you have for us. All this we pray in Jesus' name. Amen.
+  assert:
+    - type: javascript
+      value: |
+        // Verify discussionQuestions has nested structure with icebreaker, reflection, application
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const dq = json.discussionQuestions;
+        if (!dq || typeof dq !== 'object') return false;
+        const icebreaker = dq.icebreaker || [];
+        const reflection = dq.reflection || [];
+        const application = dq.application || [];
+        return icebreaker.length >= 1 && reflection.length >= 1 && application.length >= 1;
+
+    - type: javascript
+      value: |
+        // Verify keyPoints array has at least 2 items
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        return json.keyPoints && json.keyPoints.length >= 2;
+
+    - type: javascript
+      value: |
+        // Verify mainScripture and summary fields exist
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        return typeof json.mainScripture === 'string' && typeof json.summary === 'string' && json.summary.length > 50;
+
+    - type: javascript
+      value: |
+        // Verify devotional has at least 5 paragraphs
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const paragraphs = (json.devotional || '').split(/\n\n/).filter(p => p.trim());
+        return { pass: paragraphs.length >= 5, score: paragraphs.length >= 5 ? 1 : 0, reason: `Devotional has ${paragraphs.length} paragraphs (minimum 5)` };
+
+    - type: javascript
+      value: |
+        // Verify devotional has at least 600 words
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const wordCount = (json.devotional || '').split(/\s+/).filter(w => w).length;
+        return { pass: wordCount >= 600, score: wordCount >= 600 ? 1 : 0, reason: `Devotional has ${wordCount} words (minimum 600)` };
+
+    - type: javascript
+      value: |
+        // Verify devotional does NOT start with templated openings (Open, Sit, Read, Picture)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const firstWord = (json.devotional || '').trim().split(/\s+/)[0].toLowerCase();
+        const banned = ['open', 'sit', 'read', 'picture', 'turn'];
+        return { pass: !banned.includes(firstWord), score: !banned.includes(firstWord) ? 1 : 0, reason: banned.includes(firstWord) ? `Devotional starts with templated "${firstWord}..." opening` : 'Good: Varied opening' };
+

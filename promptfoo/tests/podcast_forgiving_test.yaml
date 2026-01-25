@@ -1,0 +1,39 @@
+- description: 'Podcast - Forgiving (varied opening, accessible language)'
+  vars:
+    title: 'Forgiving'
+    speaker: 'John Roth'
+    date: '2022-09-04'
+    transcript: |
+      This week, we're going to be focusing on forgiveness. Okay, forgiving, and what that means. And a lot of Jesus' words and actions were focused on that. So, forgiving. Now, to illustrate this, to illustrate forgiving today, we're going to look at three different stories of how Jesus actually did it in three different places. The boat, the banquet, and the beach.
+
+      First of all, we're going to be looking at the boat. Peter has spent an entire night out on the Sea of Galilee with his brothers and other crew members. And they haven't caught one fish. After Jesus finished teaching, it says in Luke chapter five, verses four to five. And when he had finished speaking, he said to Simon, put out into the deep and let down your nets for a catch. And Simon answered, Master, we toiled all night and took nothing. But at your word, I will let down the net.
+
+      And when they had done this, they enclosed a large number of fish and their nets were breaking. But when Simon Peter saw it, he fell down at Jesus' knees saying, Depart from me, for I am a sinful man, O Lord. Because in the presence of the holy, we become aware of our unholiness. Peter knew who he was. He knew his failures. And in the presence of Jesus, all of that came flooding back to him.
+
+      But what does Jesus say? Do not be afraid. From now on, you will be catching men. Jesus doesn't say, You're right, Peter. Get out of my sight. No. Jesus says, Don't be afraid. I have a purpose for you. Your past doesn't disqualify you from my future for you. That's forgiveness. That's grace. That's the boat.
+
+      Now let's look at the banquet. In Luke chapter 7, we find Jesus at a dinner party at the home of a Pharisee named Simon. And while they're eating, a woman comes in. The text tells us she was a woman of the city, a sinner. And she comes in with an alabaster flask of ointment. And she stands behind Jesus at his feet, weeping.
+
+      And Jesus tells a parable about two debtors. One owed five hundred denarii, the other fifty. Neither could pay, so the moneylender forgave them both. Which one will love him more? Then Jesus says to the woman, Your sins, which are many, are forgiven—for she loved much.
+
+      Finally, let's look at the beach. This is after the resurrection. Peter has denied Jesus three times. After breakfast, Jesus asks Peter three times, Do you love me? Three times, corresponding to Peter's three denials. And each time Peter says yes, Jesus gives him a commission: Feed my lambs. Tend my sheep. Feed my sheep. Jesus is restoring Peter. He's forgiving him.
+
+      So what do we learn from the boat, the banquet, and the beach? We learn that Jesus forgives everywhere. Forgiveness isn't just about wiping the slate clean. It's about being given a new future. It's about being called to something greater than your past.
+  assert:
+    - type: javascript
+      value: |
+        // Check description doesn't start with imperative verb
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const description = json.description || '';
+        const firstWord = description.trim().split(/\s+/)[0].toLowerCase();
+        const bannedStarters = ['stop', 'start', 'begin', 'let', 'take', 'make', 'do', 'don\'t', 'join', 'come', 'discover'];
+        return !bannedStarters.includes(firstWord);
+    - type: javascript
+      value: |
+        // Description should be 100-300 words
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const description = json.description || '';
+        const wordCount = description.split(/\s+/).filter(w => w.length > 0).length;
+        return wordCount >= 100 && wordCount <= 300;
+    - type: not-contains
+      value: 'This message invites'

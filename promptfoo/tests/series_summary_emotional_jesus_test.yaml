@@ -1,0 +1,99 @@
+- description: 'Series Summary - Emotional Jesus (9 messages exploring emotions through Jesus)'
+  vars:
+    seriesName: 'Emotional Jesus'
+    messageSummaries: |
+      1. "Compassion"
+         Date: September 29, 2024
+         Passage: Matthew 9:35-38
+         Summary: Emotions are a vital part of our humanity, and Jesus exemplifies the beauty of compassion, a core aspect of His character. Compassion isn't merely a feeling; it's a powerful force that moves us to action, urging us to connect with others in their struggles.
+
+      2. "Surprise"
+         Date: October 6, 2024
+         Passage: Matthew 8:5-13
+         Summary: True faith isn't about your background, moral standing, or religious practices; it's about recognizing your need for Jesus and trusting in His authority. The centurion approached Jesus with humility and desperation, demonstrating that faith is simply reliance on God's grace.
+
+      3. "Grief"
+         Date: October 13, 2024
+         Passage: John 11:17-37
+         Summary: Jesus, in his profound love, intimately shares in our sorrow. Reflecting on the story of Lazarus, Jesus weeps not only for his friend but also for the pain we all endure, reminding us that grief and love are intertwined.
+
+      4. "Joy"
+         Date: October 20, 2024
+         Passage: Luke 15:11-32
+         Summary: A joy so profound that it transcends fairness and justice, inviting into a world of grace and forgiveness. Through the parable of the prodigal son, the father's unconditional love and celebration challenges us to let go of grudges and embrace mercy.
+
+      5. "Loneliness"
+         Date: October 27, 2024
+         Passage: Ephesians 2:19
+         Summary: Loneliness is a profound struggle that many face, often feeling misunderstood or rejected. Jesus understands our pain and meets us in our isolation. While loneliness is a common human condition, it can be overcome through connection with God and each other.
+
+      6. "Anger"
+         Date: November 3, 2024
+         Passage: Matthew 21:12-17
+         Summary: While we often react out of personal offense or frustration, Jesus' anger stemmed from compassion—specifically, when barriers obstructed others from connecting with God. Reflecting on our own anger, recognizing how it can cloud judgment and lead to division.
+
+      7. "Calmness"
+         Date: November 10, 2024
+         Passage: Mark 4:36-41
+         Summary: The transformative power of calmness through the example of Jesus, who remained unshaken amidst storms—both literal and metaphorical. True peace comes from trusting Jesus, who is in the boat with us, guiding through life's unpredictable storms.
+
+      8. "Love"
+         Date: November 17, 2024
+         Passage: John 13:1-35
+         Summary: A love so profound that it compels service even to those who may betray. The radical nature of Jesus' love demonstrated through the humble act of washing His disciples' feet—a gesture that transcends societal norms and expectations.
+
+      9. "Delight"
+         Date: November 24, 2024
+         Passage: Luke 18:35-43
+         Summary: A world where delight replaces contempt—where we see the inherent value in every person, just as Jesus did with Bartimaeus and Zacchaeus. God's love isn't just a duty; it's a joyful invitation to relationship.
+  assert:
+    - type: javascript
+      value: |
+        // Verify summary exists and is under 80 words
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = json.summary || '';
+        const wordCount = summary.split(/\s+/).filter(w => w.length > 0).length;
+        return wordCount > 0 && wordCount <= 90;
+    - type: javascript
+      value: |
+        // Summary should be a single paragraph (no line breaks)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = json.summary || '';
+        return !summary.includes('\n');
+    - type: javascript
+      value: |
+        // Check summary doesn't start with banned openings
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = (json.summary || '').toLowerCase().trim();
+        const bannedStarts = [
+          'we ', 'in this series', 'this series', 'emerges', 'emotions are'
+        ];
+        return !bannedStarts.some(banned => summary.startsWith(banned));
+    - type: javascript
+      value: |
+        // Check for forbidden phrases
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = (json.summary || '').toLowerCase();
+        const forbidden = [
+          "you'll discover", "journey through", "by the end", "invites you to",
+          "you'll learn", "you'll be", "you will", "your life", "your heart"
+        ];
+        const found = forbidden.filter(phrase => summary.includes(phrase));
+        if (found.length > 0) {
+          return { pass: false, reason: `Contains forbidden phrases: ${found.join(', ')}` };
+        }
+        return true;
+    - type: javascript
+      value: |
+        // Check we/us/our usage is not excessive (max 3 occurrences)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = (json.summary || '').toLowerCase();
+        const weCount = (summary.match(/\bwe\b/g) || []).length;
+        const usCount = (summary.match(/\bus\b/g) || []).length;
+        const ourCount = (summary.match(/\bour\b/g) || []).length;
+        const total = weCount + usCount + ourCount;
+        if (total > 3) {
+          return { pass: false, reason: `Too many we/us/our: ${total} occurrences (max 3)` };
+        }
+        return true;
+

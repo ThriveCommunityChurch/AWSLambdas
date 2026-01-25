@@ -1,0 +1,113 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: 'Devotional Quality Evaluation - Tests devotional field specifically for length, tone, and variety'
+
+providers:
+  - id: azure:chat:gpt-5-mini
+    label: azure-gpt-5-mini
+    config:
+      apiHost: domain.openai.azure.com
+      apiVersion: '2024-10-21'
+      max_tokens: 8000
+      response_format:
+        type: json_object
+      timeout: 180000
+
+defaultTest:
+  options:
+    timeout: 180000
+  assert:
+    - type: is-json
+    
+    # ===== DEVOTIONAL LENGTH REQUIREMENTS =====
+    - type: javascript
+      value: |
+        // Devotional must have at least 5 paragraphs
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const paragraphs = (json.devotional || '').split(/\n\n/).filter(p => p.trim());
+        return { pass: paragraphs.length >= 5, score: paragraphs.length >= 5 ? 1 : 0, reason: `Devotional has ${paragraphs.length} paragraphs (minimum 5 required)` };
+    
+    - type: javascript
+      value: |
+        // Devotional must have at least 600 words
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const wordCount = (json.devotional || '').split(/\s+/).filter(w => w).length;
+        return { pass: wordCount >= 600, score: wordCount >= 600 ? 1 : 0, reason: `Devotional has ${wordCount} words (minimum 600 required)` };
+
+    # ===== BANNED TEMPLATED OPENINGS =====
+    - type: javascript
+      value: |
+        // Devotional must NOT start with "Open" (templated opening)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const firstWord = (json.devotional || '').trim().split(/\s+/)[0].toLowerCase();
+        return { pass: firstWord !== 'open', score: firstWord !== 'open' ? 1 : 0, reason: firstWord === 'open' ? 'Devotional starts with templated "Open..." opening' : 'Good: Devotional has varied opening' };
+    
+    - type: javascript
+      value: |
+        // Devotional must NOT start with "Sit" (templated opening)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const firstWord = (json.devotional || '').trim().split(/\s+/)[0].toLowerCase();
+        return { pass: firstWord !== 'sit', score: firstWord !== 'sit' ? 1 : 0, reason: firstWord === 'sit' ? 'Devotional starts with templated "Sit..." opening' : 'Good: Devotional has varied opening' };
+    
+    - type: javascript
+      value: |
+        // Devotional must NOT start with "Read" (templated opening)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const firstWord = (json.devotional || '').trim().split(/\s+/)[0].toLowerCase();
+        return { pass: firstWord !== 'read', score: firstWord !== 'read' ? 1 : 0, reason: firstWord === 'read' ? 'Devotional starts with templated "Read..." opening' : 'Good: Devotional has varied opening' };
+    
+    - type: javascript
+      value: |
+        // Devotional must NOT start with "Picture" (templated opening)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const firstWord = (json.devotional || '').trim().split(/\s+/)[0].toLowerCase();
+        return { pass: firstWord !== 'picture', score: firstWord !== 'picture' ? 1 : 0, reason: firstWord === 'picture' ? 'Devotional starts with templated "Picture..." opening' : 'Good: Devotional has varied opening' };
+
+    # ===== BANNED PHRASES =====
+    - type: javascript
+      value: |
+        // Devotional must NOT contain "read slowly" (repetitive instruction)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const hasPhrase = (json.devotional || '').toLowerCase().includes('read') && (json.devotional || '').toLowerCase().includes('slowly');
+        return { pass: !hasPhrase, score: !hasPhrase ? 1 : 0, reason: hasPhrase ? 'Devotional contains "read slowly" - repetitive instruction' : 'Good: No "read slowly" instruction' };
+    
+    - type: javascript
+      value: |
+        // Devotional must NOT contain "you are invited to"
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const hasPhrase = (json.devotional || '').toLowerCase().includes('you are invited to');
+        return { pass: !hasPhrase, score: !hasPhrase ? 1 : 0, reason: hasPhrase ? 'Devotional contains banned phrase "you are invited to"' : 'Good: No "you are invited to"' };
+
+    # ===== STUDY GUIDE STRUCTURE =====
+    - type: javascript
+      value: |
+        // Verify keyPoints array has at least 2 items
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        return json.keyPoints && json.keyPoints.length >= 2;
+    
+    - type: javascript
+      value: |
+        // Verify prayerPrompts array has at least 2 items
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        return json.prayerPrompts && json.prayerPrompts.length >= 2;
+    
+    - type: javascript
+      value: |
+        // Verify discussionQuestions has nested structure
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const dq = json.discussionQuestions;
+        if (!dq || typeof dq !== 'object') return false;
+        return (dq.icebreaker?.length >= 1) && (dq.reflection?.length >= 1) && (dq.application?.length >= 1);
+
+prompts:
+  - id: study_guide
+    label: Study Guide (Devotional Focus)
+    raw: file://prompts/study_guide_prompt.txt
+
+tests:
+  - file://tests/study_guide_forgiving_test.yaml
+  - file://tests/study_guide_psalm37_test.yaml
+  - file://tests/study_guide_joy_test.yaml
+  - file://tests/study_guide_doubt_test.yaml
+  - file://tests/study_guide_lust_test.yaml
+  - file://tests/study_guide_loneliness_test.yaml
+

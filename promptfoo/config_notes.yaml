@@ -1,0 +1,64 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: 'Sermon Notes Evaluation'
+
+providers:
+  - id: azure:chat:gpt-5-mini
+    label: azure-gpt-5-mini
+    config:
+      apiHost: domain.openai.azure.com
+      apiVersion: '2024-10-21'
+      max_tokens: 6000
+      response_format:
+        type: json_object
+      timeout: 180000
+
+defaultTest:
+  options:
+    timeout: 180000
+  assert:
+    # Marketing/promotional language
+    - type: not-contains
+      value: 'Join us as we'
+    - type: not-contains
+      value: 'Come discover'
+    - type: not-contains
+      value: 'In this powerful message'
+    - type: not-contains
+      value: 'This life-changing sermon'
+    - type: not-contains
+      value: 'this transformative message'
+    - type: not-contains
+      value: 'this incredible sermon'
+    # Repetitive patterns from cached outputs
+    - type: not-contains
+      value: 'Right now, you are invited'
+    - type: not-contains
+      value: 'you are invited into'
+    - type: not-contains
+      value: 'you are invited to'
+    # Only catch promotional closings, not educational context
+    - type: not-contains
+      value: 'Step into this'
+    - type: not-contains
+      value: 'Step into freedom'
+    - type: not-contains
+      value: 'Step into grace'
+    - type: is-json
+
+prompts:
+  - file://prompts/notes_prompt.txt
+
+tests:
+  - file://tests/forgiving_test.yaml
+  - file://tests/believe_boldly_test.yaml
+  - file://tests/unfair_test.yaml
+  - file://tests/do_not_judge_test.yaml
+  - file://tests/encouraging_others_test.yaml
+  - file://tests/joy_test.yaml
+  - file://tests/lust_test.yaml
+  - file://tests/jesus_is_offensive_test.yaml
+  - file://tests/loneliness_test.yaml
+  - file://tests/peace_test.yaml
+  - file://tests/do_not_love_world_test.yaml
+  - file://tests/rejoice_test.yaml
+

@@ -1,0 +1,46 @@
+- description: 'Tags - Growing In Grace'
+  vars:
+    summary: 'Spiritual growth isn''t about striving harder or achieving more—it''s about receiving more of what God has already given. Grace isn''t just the starting point of faith; it''s the fuel for every step forward. Growing in grace means learning to rest in God''s acceptance while being transformed by His love. It''s the paradox of effort and surrender: you work out what God works in. This growth happens not through willpower alone but through practices that keep you connected to the source—Scripture, prayer, community, and honest reflection on where you''re still holding back.'
+    transcript: file://transcripts/growing_grace.txt
+  assert:
+    - type: javascript
+      value: |
+        // Verify tags is an array with 1-5 items
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const tags = json.tags || [];
+        return Array.isArray(tags) && tags.length >= 1 && tags.length <= 5;
+    - type: javascript
+      value: |
+        // Verify all tags are from the valid list
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const tags = json.tags || [];
+        const validTags = [
+          'Marriage', 'Family', 'Friendship', 'Singleness',
+          'FinancialStewardship', 'Generosity',
+          'NatureOfGod', 'Trinity', 'Salvation', 'Resurrection', 'HolySpirit',
+          'Church', 'EndTimes', 'SinAndRepentance', 'Faith', 'Sanctification', 'Covenant', 'Apologetics',
+          'Prayer', 'Fasting', 'Worship', 'BibleStudy', 'Meditation', 'Service', 'Praise',
+          'Baptism', 'Communion',
+          'Youth', 'Aging', 'GriefAndLoss', 'LifeTransitions',
+          'SocialJustice', 'RacialReconciliation', 'Poverty', 'Creation', 'Politics',
+          'Identity', 'Purpose', 'Courage', 'Hope', 'Love', 'Joy', 'Peace', 'Patience',
+          'Humility', 'Wisdom', 'Integrity', 'Forgiveness', 'Gratitude', 'Trust', 'Obedience', 'Contentment', 'Pride', 'Fear', 'Anger',
+          'Suffering', 'Doubt', 'Anxiety', 'Depression', 'Addiction', 'Temptation', 'SpiritualWarfare', 'Persecution',
+          'Heaven', 'Hell',
+          'Evangelism', 'Missions', 'Discipleship', 'Leadership', 'Witnessing',
+          'Parables', 'SermonOnTheMount', 'FruitOfTheSpirit', 'ArmorOfGod', 'Prophets',
+          'Genesis', 'Exodus', 'Psalms', 'Proverbs', 'Gospels', 'Acts', 'Romans', 'PaulineEpistles', 'Revelation', 'OldTestament', 'NewTestament',
+          'Advent', 'Christmas', 'Lent', 'Easter', 'Pentecost',
+          'Work', 'Rest',
+          'BiblicalManhood', 'BiblicalWomanhood', 'SexualPurity',
+          'Miracles', 'Prophecy', 'Healing', 'Community', 'Culture', 'Technology'
+        ];
+        return tags.every(tag => validTags.includes(tag));
+    - type: javascript
+      value: |
+        // Verify relevant tags are included (Sanctification, Faith, or Discipleship expected)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const tags = json.tags || [];
+        const expectedTags = ['Sanctification', 'Faith', 'Discipleship', 'Prayer', 'BibleStudy'];
+        return expectedTags.some(expected => tags.includes(expected));
+

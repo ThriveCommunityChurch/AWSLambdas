@@ -1,0 +1,98 @@
+- description: 'Notes - Forgiving (real transcript)'
+  vars:
+    title: 'Forgiving'
+    speaker: 'John Roth'
+    date: '2022-09-04'
+    transcript: |
+      This week, we're going to be focusing on forgiveness. Okay, forgiving, and what that means. And a lot of Jesus' words and actions were focused on that. So, forgiving. Now, to illustrate this, to illustrate forgiving today, we're going to look at three different stories of how Jesus actually did it in three different places, even if the word doesn't show up in all three of the stories. But they are illustrated, I would say, by these three things. The boat, the banquet, and the beach. You'd expect maybe all forgiveness is all about the church and the temple and, you know, the synagogue and all these places that Jesus was at. He actually forgave everywhere and he was really involved in people's lives where they were at, right where they were. So, it's the boat, the banquet, and the beach that we're going to look at today.
+
+      First of all, we're going to be looking at the boat. Okay? Anybody a fisherman out there? Okay. I love to fish. I also hate to fish. Do you understand what I mean by that? And this is today, you know, when we've got all the technology that's available to us, from GPS to sonar to expensive boats and every technique under the sun. If it's your living, though, even today, fishing is so contingent, so dependent on if the fish are there. If you can find the fish. Can you imagine, though, at the time of Jesus, what fishing was like in a little dingy of a boat with a little sail on it and some rowing that you might be able to do and some nets and that's about it. But that's what we know life was like on the Sea of Galilee. And some of Jesus' first disciples were fishermen. In fact, it seems like Peter prided himself in being a great expert at this, making a livelihood for his family, probably bragging about his catches. But you know the odd thing about Peter in the Gospels is you never find him catch a fish without the help of Jesus. Not one.
+
+      And the first story about the boat is like that. Right. The first time he meets Jesus and Jesus meets him. Peter has spent an entire night out on the Sea of Galilee with his brothers and other crew members. And they haven't caught one fish. And so they're now on the shoreline and Jesus comes up to them and they're mending their nets there on the shoreline. And Jesus asks Peter to just push off the shore just a little bit so he can use Peter's boat as a podium and the water as a natural amplifier for the crowds to be able to hear him. After Jesus finished teaching. Then it says in Luke chapter five, verses four to five. And when he had finished speaking, he said to Simon, put out into deep into the deep and let down your nets for a catch. And Simon answered, Master, we toiled all night and took nothing. But at your word, I will let down the net.
+
+      And when they had done this, they enclosed a large number of fish and their nets were breaking. They signaled to their partners in the other boat to come and help them. And they came and filled both the boats so that they began to sink. But when Simon Peter saw it, he fell down at Jesus' knees saying, Depart from me, for I am a sinful man, O Lord. For he and all who were with him were astonished at the catch of fish that they had taken. And so also were James and John, sons of Zebedee, who were partners with Simon. And Jesus said to Simon, Do not be afraid. From now on, you will be catching men. And when they had brought their boats to land, they left everything and followed him.
+
+      Now, what's going on here? Peter has just had this miraculous catch of fish. And his response is, Depart from me, for I am a sinful man. Why would he say that? Because in the presence of the holy, we become aware of our unholiness. In the presence of the pure, we become aware of our impurity. In the presence of the righteous, we become aware of our unrighteousness. Peter knew who he was. He knew his failures. He knew his shortcomings. And in the presence of Jesus, all of that came flooding back to him. And his response was, Get away from me. I'm not worthy to be in your presence.
+
+      But what does Jesus say? Do not be afraid. From now on, you will be catching men. Jesus doesn't say, You're right, Peter. You are a sinful man. Get out of my sight. No. Jesus says, Don't be afraid. I have a purpose for you. I have a plan for you. Your past doesn't disqualify you from my future for you. That's forgiveness. That's grace. That's the boat.
+
+      Now let's look at the banquet. In Luke chapter 7, we find Jesus at a dinner party at the home of a Pharisee named Simon. And while they're eating, a woman comes in. The text tells us she was a woman of the city, a sinner. Most scholars believe this means she was a prostitute. And she comes in with an alabaster flask of ointment. And she stands behind Jesus at his feet, weeping. And she begins to wet his feet with her tears and wipe them with her hair. And she kisses his feet and anoints them with the ointment.
+
+      Now, the Pharisee who had invited Jesus sees this and says to himself, If this man were a prophet, he would have known who and what sort of woman this is who is touching him, for she is a sinner. And Jesus, knowing his thoughts, tells him a parable about two debtors. One owed five hundred denarii, the other fifty. Neither could pay, so the moneylender forgave them both. Which one will love him more? Simon answers, The one who had the larger debt forgiven. Jesus says, You have judged rightly.
+
+      Then turning toward the woman, he says to Simon, Do you see this woman? I entered your house; you gave me no water for my feet, but she has wet my feet with her tears and wiped them with her hair. You gave me no kiss, but from the time I came in she has not ceased to kiss my feet. You did not anoint my head with oil, but she has anointed my feet with ointment. Therefore I tell you, her sins, which are many, are forgiven—for she loved much. But he who is forgiven little, loves little. And he said to her, Your sins are forgiven.
+
+      That's the banquet. A woman with a past, a woman known for her sin, comes to Jesus. And Jesus doesn't push her away. He doesn't condemn her. He forgives her. And he points out that those who have been forgiven much, love much.
+
+      Finally, let's look at the beach. This is after the resurrection. Peter has denied Jesus three times. He's gone back to fishing. And Jesus appears on the shore and tells them to cast their nets on the other side. They catch a huge haul of fish. Peter realizes it's Jesus and jumps into the water to get to him.
+
+      After breakfast, Jesus asks Peter three times, Do you love me? Three times, corresponding to Peter's three denials. And each time Peter says yes, Jesus gives him a commission: Feed my lambs. Tend my sheep. Feed my sheep. Jesus is restoring Peter. He's forgiving him. He's giving him a new purpose.
+
+      So what do we learn from the boat, the banquet, and the beach? We learn that Jesus forgives everywhere. He forgives the fisherman who feels unworthy. He forgives the woman with a sinful past. He forgives the disciple who denied him. And he calls each of them to a new purpose.
+
+      Forgiveness isn't just about wiping the slate clean. It's about being given a new future. It's about being called to something greater than your past. That's what Jesus offers us. Not just forgiveness, but a new identity and a new mission.
+
+      So wherever you are today, whatever your past, know that Jesus meets you there. On the boat, at the banquet, on the beach. He forgives. And he calls you to follow him.
+  assert:
+    - type: javascript
+      value: |
+        // Check summary doesn't start with imperative verb
+        // output may be object (response_format: json_object) or string
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = json.summary || '';
+        const firstWord = summary.trim().split(/\s+/)[0].toLowerCase();
+        const bannedStarters = ['stop', 'start', 'begin', 'let', 'take', 'make', 'do', 'don\'t'];
+        return !bannedStarters.includes(firstWord);
+    - type: javascript
+      value: |
+        // Verify keyPoints array has at least 2 items
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        return json.keyPoints && json.keyPoints.length >= 2;
+    - type: javascript
+      value: |
+        // Summary should be 2+ paragraphs (contains newlines)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = json.summary || '';
+        return summary.includes('\n');
+    # ACCURACY VALIDATIONS
+    - type: javascript
+      value: |
+        // Verify quotes appear in transcript (fuzzy match - at least 60% of words)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const transcript = context.vars.transcript.toLowerCase();
+        const quotes = json.quotes || [];
+        if (quotes.length === 0) return true;
+
+        function wordOverlap(quote, text) {
+          const quoteWords = quote.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => w.length > 3);
+          if (quoteWords.length === 0) return 1;
+          const matchCount = quoteWords.filter(w => text.includes(w)).length;
+          return matchCount / quoteWords.length;
+        }
+
+        const failed = quotes.filter(q => wordOverlap(q.text, transcript) < 0.6);
+        return failed.length === 0;
+    - type: javascript
+      value: |
+        // Verify scripture references were mentioned in transcript
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const transcript = context.vars.transcript.toLowerCase();
+
+        // Extract all scripture refs from output
+        const scriptures = [];
+        if (json.mainScripture) scriptures.push(json.mainScripture);
+        (json.keyPoints || []).forEach(kp => { if (kp.scripture) scriptures.push(kp.scripture); });
+
+        // Check each scripture reference appears in transcript
+        const failed = scriptures.filter(ref => {
+          if (!ref || ref.trim() === '') return false;
+          const refLower = ref.toLowerCase();
+          // Extract book name and check if mentioned
+          const bookMatch = refLower.match(/^(\d?\s*[a-z]+)/);
+          if (!bookMatch) return false;
+          const book = bookMatch[1].replace(/\s+/g, ' ').trim();
+          return !transcript.includes(book);
+        });
+
+        return failed.length === 0;
+

@@ -1,0 +1,46 @@
+- description: 'Tags - Bearing One Another''s Burdens'
+  vars:
+    summary: 'When someone stumbles, the instinct might be to judge or distance yourself. But Galatians 6 calls for a different response—gentle restoration, carrying each other''s heavy loads, and honest self-examination. The distinction between burdens we share and loads we must carry alone reveals a rhythm of community life: sometimes you need help, sometimes you offer it. Pride can blind you to your own need, while comparison can distort your sense of calling. True spiritual maturity shows up not in self-sufficiency but in mutual dependence and the willingness to do good persistently, even when results seem slow.'
+    transcript: file://transcripts/bearing_burdens.txt
+  assert:
+    - type: javascript
+      value: |
+        // Verify tags is an array with 1-5 items
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const tags = json.tags || [];
+        return Array.isArray(tags) && tags.length >= 1 && tags.length <= 5;
+    - type: javascript
+      value: |
+        // Verify all tags are from the valid list
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const tags = json.tags || [];
+        const validTags = [
+          'Marriage', 'Family', 'Friendship', 'Singleness',
+          'FinancialStewardship', 'Generosity',
+          'NatureOfGod', 'Trinity', 'Salvation', 'Resurrection', 'HolySpirit',
+          'Church', 'EndTimes', 'SinAndRepentance', 'Faith', 'Sanctification', 'Covenant', 'Apologetics',
+          'Prayer', 'Fasting', 'Worship', 'BibleStudy', 'Meditation', 'Service', 'Praise',
+          'Baptism', 'Communion',
+          'Youth', 'Aging', 'GriefAndLoss', 'LifeTransitions',
+          'SocialJustice', 'RacialReconciliation', 'Poverty', 'Creation', 'Politics',
+          'Identity', 'Purpose', 'Courage', 'Hope', 'Love', 'Joy', 'Peace', 'Patience',
+          'Humility', 'Wisdom', 'Integrity', 'Forgiveness', 'Gratitude', 'Trust', 'Obedience', 'Contentment', 'Pride', 'Fear', 'Anger',
+          'Suffering', 'Doubt', 'Anxiety', 'Depression', 'Addiction', 'Temptation', 'SpiritualWarfare', 'Persecution',
+          'Heaven', 'Hell',
+          'Evangelism', 'Missions', 'Discipleship', 'Leadership', 'Witnessing',
+          'Parables', 'SermonOnTheMount', 'FruitOfTheSpirit', 'ArmorOfGod', 'Prophets',
+          'Genesis', 'Exodus', 'Psalms', 'Proverbs', 'Gospels', 'Acts', 'Romans', 'PaulineEpistles', 'Revelation', 'OldTestament', 'NewTestament',
+          'Advent', 'Christmas', 'Lent', 'Easter', 'Pentecost',
+          'Work', 'Rest',
+          'BiblicalManhood', 'BiblicalWomanhood', 'SexualPurity',
+          'Miracles', 'Prophecy', 'Healing', 'Community', 'Culture', 'Technology'
+        ];
+        return tags.every(tag => validTags.includes(tag));
+    - type: javascript
+      value: |
+        // Verify relevant tags are included (Community, Service, or Humility expected for this sermon)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const tags = json.tags || [];
+        const expectedTags = ['Community', 'Service', 'Humility', 'PaulineEpistles', 'FruitOfTheSpirit'];
+        return expectedTags.some(expected => tags.includes(expected));
+

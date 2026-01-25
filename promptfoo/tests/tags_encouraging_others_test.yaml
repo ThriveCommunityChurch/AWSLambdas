@@ -1,0 +1,46 @@
+- description: 'Tags - Encouraging Others'
+  vars:
+    summary: 'The early church grew explosively not through programs or marketing but through the simple practice of encouragement. Barnabas, whose name means "son of encouragement," modeled what it looks like to see potential in others and call it forth. Encouragement isn''t flattery—it''s speaking truth that builds up, noticing what God is doing in someone''s life, and coming alongside them in their journey. In a world quick to criticize, the church is called to be a community where people are lifted up, believed in, and spurred on toward love and good deeds.'
+    transcript: file://transcripts/encouraging_others.txt
+  assert:
+    - type: javascript
+      value: |
+        // Verify tags is an array with 1-5 items
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const tags = json.tags || [];
+        return Array.isArray(tags) && tags.length >= 1 && tags.length <= 5;
+    - type: javascript
+      value: |
+        // Verify all tags are from the valid list
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const tags = json.tags || [];
+        const validTags = [
+          'Marriage', 'Family', 'Friendship', 'Singleness',
+          'FinancialStewardship', 'Generosity',
+          'NatureOfGod', 'Trinity', 'Salvation', 'Resurrection', 'HolySpirit',
+          'Church', 'EndTimes', 'SinAndRepentance', 'Faith', 'Sanctification', 'Covenant', 'Apologetics',
+          'Prayer', 'Fasting', 'Worship', 'BibleStudy', 'Meditation', 'Service', 'Praise',
+          'Baptism', 'Communion',
+          'Youth', 'Aging', 'GriefAndLoss', 'LifeTransitions',
+          'SocialJustice', 'RacialReconciliation', 'Poverty', 'Creation', 'Politics',
+          'Identity', 'Purpose', 'Courage', 'Hope', 'Love', 'Joy', 'Peace', 'Patience',
+          'Humility', 'Wisdom', 'Integrity', 'Forgiveness', 'Gratitude', 'Trust', 'Obedience', 'Contentment', 'Pride', 'Fear', 'Anger',
+          'Suffering', 'Doubt', 'Anxiety', 'Depression', 'Addiction', 'Temptation', 'SpiritualWarfare', 'Persecution',
+          'Heaven', 'Hell',
+          'Evangelism', 'Missions', 'Discipleship', 'Leadership', 'Witnessing',
+          'Parables', 'SermonOnTheMount', 'FruitOfTheSpirit', 'ArmorOfGod', 'Prophets',
+          'Genesis', 'Exodus', 'Psalms', 'Proverbs', 'Gospels', 'Acts', 'Romans', 'PaulineEpistles', 'Revelation', 'OldTestament', 'NewTestament',
+          'Advent', 'Christmas', 'Lent', 'Easter', 'Pentecost',
+          'Work', 'Rest',
+          'BiblicalManhood', 'BiblicalWomanhood', 'SexualPurity',
+          'Miracles', 'Prophecy', 'Healing', 'Community', 'Culture', 'Technology'
+        ];
+        return tags.every(tag => validTags.includes(tag));
+    - type: javascript
+      value: |
+        // Verify relevant tags are included (Community, Church, Acts, or Discipleship expected)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const tags = json.tags || [];
+        const expectedTags = ['Community', 'Church', 'Acts', 'Discipleship', 'Love', 'Friendship'];
+        return expectedTags.some(expected => tags.includes(expected));
+

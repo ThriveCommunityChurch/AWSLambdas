@@ -1,0 +1,59 @@
+- description: 'Sermon Summary - Encouraging Others'
+  vars:
+    title: 'Encouraging Others'
+    speaker: 'John Roth'
+    date: '2023-02-12'
+    transcript: file://transcripts/encouraging_others.txt
+  assert:
+    - type: javascript
+      value: |
+        // Verify summary exists and is under 120 words
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = json.summary || '';
+        const wordCount = summary.split(/\s+/).filter(w => w.length > 0).length;
+        return wordCount > 0 && wordCount <= 130;
+    - type: javascript
+      value: |
+        // Summary should be a single paragraph (no line breaks)
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = json.summary || '';
+        return !summary.includes('\n');
+    - type: javascript
+      value: |
+        // Check summary doesn't start with banned openings
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = (json.summary || '').toLowerCase().trim();
+        const bannedStarts = [
+          'in a world', 'life often feels', 'life can often feel',
+          'imagine living', 'imagine a world', 'have you ever felt',
+          'today, you\'ll', 'emotions are an integral'
+        ];
+        return !bannedStarts.some(banned => summary.startsWith(banned));
+    - type: javascript
+      value: |
+        // Check summary doesn't contain banned transitions
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = (json.summary || '').toLowerCase();
+        const bannedPhrases = [
+          'this message invites', 'this sermon invites',
+          'you\'ll discover', 'you\'ll learn',
+          'you\'ll be encouraged', 'you\'ll be challenged',
+          'you are invited to explore', 'as you reflect on',
+          'as you engage with this message', 'ultimately, you\'ll'
+        ];
+        return !bannedPhrases.some(banned => summary.includes(banned));
+    - type: javascript
+      value: |
+        // Check summary doesn't end with generic rhetorical question
+        const json = typeof output === 'string' ? JSON.parse(output) : output;
+        const summary = (json.summary || '').toLowerCase().trim();
+        const bannedEndings = [
+          'how will you respond?', 'what will you do with this?',
+          'how might this change your life?'
+        ];
+        return !bannedEndings.some(banned => summary.endsWith(banned));
+    - type: not-contains
+      value: 'this message'
+    - type: not-contains
+      value: 'this sermon'
+
