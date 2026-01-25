@@ -39,3 +39,4 @@ build/
 # Lambda deployment packages
 *.zip
 
+promptfoo/eval_output.txt

@@ -114,8 +114,12 @@ module.exports = async function() {
         value: `
           const json = typeof output === 'string' ? JSON.parse(output) : output;
           const summary = (json.summary || '').toLowerCase();
-          const forbidden = ["you'll discover", "journey through", "by the end", "invites you to", "you'll learn", "you will", "your life", "emerges", "emerging", "thread", "weaves", "woven", "surfaces", "frames"];
-          const found = forbidden.filter(p => summary.includes(p));
+          // Use word boundaries for single words to avoid false positives (e.g., "reframes" matching "frames")
+          const forbiddenPhrases = ["you'll discover", "journey through", "by the end", "invites you to", "you'll learn", "you will", "your life"];
+          const forbiddenWords = ["emerges", "emerging", "thread", "weaves", "woven", "surfaces", "frames"];
+          const foundPhrases = forbiddenPhrases.filter(p => summary.includes(p));
+          const foundWords = forbiddenWords.filter(w => new RegExp('\\\\b' + w + '\\\\b').test(summary));
+          const found = [...foundPhrases, ...foundWords];
           if (found.length > 0) return { pass: false, reason: 'Forbidden words/phrases: ' + found.join(', ') };
           return true;
         `
