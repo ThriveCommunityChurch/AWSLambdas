@@ -283,13 +283,14 @@ def generate_podcast_description(transcript: str, title: str, speaker: str, pass
         # GPT-5 models use different parameters than GPT-4o
         if is_gpt5_model(model):
             # GPT-5 models: no temperature, use max_completion_tokens, developer role
+            # NOTE: GPT-5 uses reasoning tokens that consume the budget, need high max_completion_tokens
             response = client.chat.completions.create(
                 model=model,
                 messages=[
                     {"role": "developer", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
-                max_completion_tokens=500,
+                max_completion_tokens=20000,
                 reasoning_effort="low"
             )
         else:
