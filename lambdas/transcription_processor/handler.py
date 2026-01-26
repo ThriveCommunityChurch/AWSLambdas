@@ -1184,10 +1184,14 @@ def lambda_handler(event, context):
         sermon_notes = None
         study_guide = None
         try:
+            # Convert date to string for prompt templates (replace() expects strings)
+            date_value = metadata.get('date', '')
+            if isinstance(date_value, datetime):
+                date_value = date_value.strftime('%Y-%m-%d')
             generation_metadata = {
                 'title': metadata.get('title', ''),
                 'speaker': metadata.get('speaker', ''),
-                'date': metadata.get('date', '')
+                'date': date_value
             }
             sermon_notes = generate_sermon_notes(transcript, generation_metadata)
             study_guide = generate_study_guide(transcript, generation_metadata)
@@ -1216,13 +1220,18 @@ def lambda_handler(event, context):
         if study_guide:
             available_features.append('StudyGuide')  # Maps to TranscriptFeature.StudyGuide (2)
 
+        # Convert date to ISO string for JSON serialization
+        sermon_date = metadata.get('date', '')
+        if isinstance(sermon_date, datetime):
+            sermon_date = sermon_date.isoformat()
+
         sermon_payload = {
             'messageId': message_id,
             'transcript': transcript,
             'blobUrl': transcript_url,  # Azure Blob URL (or None if upload failed)
             'title': metadata.get('title', ''),
             'speaker': metadata.get('speaker', ''),
-            'date': metadata.get('date', ''),
+            'date': sermon_date,
             'passageRef': metadata.get('passageRef', ''),
             'audioUrl': audio_url,
             'generateWaveform': True,  # Generate waveform from audio
