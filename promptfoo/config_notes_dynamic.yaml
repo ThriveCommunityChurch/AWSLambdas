@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: 'Sermon Notes Evaluation - Dynamic Random Sampling'
+
+providers:
+  - id: azure:chat:gpt-5-mini
+    label: azure-gpt-5-mini
+    config:
+      apiHost: domain.openai.azure.com
+      apiVersion: '2024-10-21'
+      max_tokens: 6000
+      response_format:
+        type: json_object
+      timeout: 180000
+
+extensions:
+  - file://hooks/notes_hooks.js:extensionHook
+
+defaultTest:
+  options:
+    timeout: 180000
+  assert:
+    # Marketing/promotional language
+    - type: not-contains
+      value: 'Join us as we'
+    - type: not-contains
+      value: 'Come discover'
+    - type: not-contains
+      value: 'In this powerful message'
+    - type: not-contains
+      value: 'This life-changing sermon'
+    - type: not-contains
+      value: 'this transformative message'
+    - type: not-contains
+      value: 'this incredible sermon'
+    - type: is-json
+
+prompts:
+  - file://prompts/notes_prompt.txt
+
+tests:
+  - file://tests/notes_dynamic.js
+

@@ -1,0 +1,48 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: 'Study Guide Dynamic Evaluation - random sermons from production'
+
+# This config fetches random sermons from MongoDB and generates study guides.
+# Includes cross-sample repetition analysis for summary and devotional fields.
+#
+# Usage: npx promptfoo eval -c config_study_guide_dynamic.yaml -o results_study_guide_dynamic.json
+# Set STUDY_GUIDE_EVAL_LIMIT env var to change count (default: 10, recommend 20+ for repetition analysis)
+
+extensions:
+  - file://hooks/study_guide_hooks.js:extensionHook
+
+providers:
+  - id: azure:chat:gpt-5-mini
+    label: azure-gpt-5-mini
+    config:
+      apiHost: domain.openai.azure.com
+      apiVersion: '2024-10-21'
+      max_tokens: 8000
+      response_format:
+        type: json_object
+      timeout: 300000
+
+defaultTest:
+  options:
+    timeout: 300000
+  assert:
+    - type: is-json
+    # Marketing language
+    - type: not-contains
+      value: 'Join us as we'
+    - type: not-contains
+      value: 'Come discover'
+    - type: not-contains
+      value: 'In this powerful message'
+    - type: not-contains
+      value: 'This life-changing sermon'
+    - type: not-contains
+      value: 'You are invited to'
+
+prompts:
+  - id: study_guide
+    label: Study Guide
+    raw: file://prompts/study_guide_prompt.txt
+
+tests:
+  - file://tests/study_guide_dynamic.js
+

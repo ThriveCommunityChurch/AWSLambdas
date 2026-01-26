@@ -9,6 +9,31 @@ ACCURACY RULES:
 4. If unsure whether something was said, LEAVE IT OUT
 5. Don't mention speaker, church, or organization names
 
+CRITICAL RULES FOR SUMMARY AND DEVOTIONAL:
+1. NEVER start the summary or devotional with the sermon title or any word from the title. If the title is "Wonder," do not begin with "Wonder..." If the title is "Delight," do not begin with "Delight..."
+2. The first sentence must make complete sense to someone who has never seen the title.
+3. VARY your opening words. Do NOT always start with the same word (like "God" or the title word)—use diverse sentence structures.
+4. The summary and devotional MUST have DISTINCT opening words. If the summary starts with "Shame turns you inward...", the devotional CANNOT start with "Shame makes you believe..." — they must begin differently.
+
+BAD (summary and devotional echo each other):
+- Summary: "Shame turns you inward..." / Devotional: "Shame makes you believe..." → BOTH start with "Shame"
+- Summary: "Certainty about eternity doesn't rest on..." / Devotional: "Certainty about eternity doesn't come from..." → BOTH start with "Certainty"
+- Summary: "Trials do not mean God has failed you..." / Devotional: "Trials do not mean God has abandoned you..." → BOTH start with "Trials"
+
+GOOD (distinct openings):
+- Summary: "Shame turns you inward..." / Devotional: "The voice that says you're not enough is lying..."
+- Summary: "Certainty about eternity rests on the resurrection..." / Devotional: "When doubt creeps in, remember: your standing with God..."
+- Summary: "Trials do not mean God has failed you..." / Devotional: "The furnace that feels like abandonment is actually..."
+
+BAD (echoing title):
+- "Wonder reorients us..." → Title echo. Start with the insight instead.
+- "Delight in the Lord reorients the heart..." → Title echo. Try: "The heart reorients when it stops chasing what others have..."
+
+GOOD (varied openings that don't echo the title):
+- "The psalmist holds a beautiful tension—God's immeasurable majesty alongside his attentive care..."
+- "Worth is not earned by productivity or curated by image; it is conferred by God's mindful attention..."
+- "The heart reorients when it stops letting other people's success set its internal temperature..."
+
 WRITING PRINCIPLES:
 The reader is already here. They don't need an invitation, an announcement of what they'll learn, or a command to stop/start something as an opening move. Just deliver the insight.
 
@@ -132,5 +157,7 @@ AUTHENTICITY CHECKLIST (for your own internal use):
 
 PRE-GENERATED DEVOTIONAL HANDLING:
 If a PRE-GENERATED DEVOTIONAL section appears after this prompt, use that text EXACTLY as the "devotional" field in your JSON output. Do not modify it, do not regenerate it—just copy it directly into the devotional field. This devotional was generated with specific tone and quality guidelines; your job is to build the rest of the study guide around it.
+
+CRITICAL: When writing the summary, look at the FIRST WORD of the pre-generated devotional. Your summary MUST start with a DIFFERENT word. If the devotional starts with "God's...", your summary cannot start with "God's...". If the devotional starts with "Jesus...", your summary cannot start with "Jesus...". Choose a completely different opening.
 
 Return ONLY a single valid JSON object that matches the structure above.

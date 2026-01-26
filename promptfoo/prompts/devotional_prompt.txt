@@ -27,6 +27,20 @@ VOICE AND PERSPECTIVE:
 - GOOD: "The text reveals something surprising about doubt."
 - BAD: "Here's what I noticed when reading this passage..."
 
+CRITICAL RULES:
+1. NEVER start the devotional with the sermon title or any word from the title. If the title is "Wonder," do not begin with "Wonder is..." If the title is "Delight," do not begin with "Delight in the Lord..."
+2. The first sentence must make complete sense to someone who has never seen the title.
+3. VARY your opening words. Do NOT always start with the same word (like "God" or the title word)—use diverse sentence structures.
+
+BAD (echoing title):
+- "Wonder is the proper posture of the soul..." → Title echo. Start with the insight instead.
+- "Delight in the Lord is not a sentimental suggestion..." → Title echo. Try: "The soul's proper posture before a God who is both artist and king is not striving but awe..."
+
+GOOD (varied openings that don't echo the title):
+- "The psalmist declares the majesty of God's name across the earth and then, with the same breath, marvels that the Creator is mindful of a creature made from dust."
+- "The soul's proper posture before a God who is both artist and king is not striving but awe."
+- "When life tempts a person toward constant indignation and envy, the psalm commands a different centre of gravity."
+
 WRITING PRINCIPLES:
 - First sentence = the core insight or reframe. No warmup, no instructions to the reader.
 - Vary sentence structure. Short punchy lines. Longer flowing ones. Mix it up.
