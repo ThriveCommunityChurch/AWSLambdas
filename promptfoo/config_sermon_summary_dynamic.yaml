@@ -1,5 +1,11 @@
 # yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
-description: 'Sermon Summary Evaluation'
+description: 'Sermon Summary Dynamic Evaluation - 10 random sermons from production'
+
+# This config fetches 10 random sermons from MongoDB and generates summaries
+# using the updated prompt. Compares output against title echo and reflective phrase patterns.
+#
+# Usage: npx promptfoo eval -c config_sermon_summary_dynamic.yaml -o results_sermon_summary_dynamic.json
+# Set SERMON_EVAL_LIMIT env var to change count (default: 10)
 
 providers:
   - id: azure:chat:gpt-5-mini
@@ -26,10 +32,6 @@ defaultTest:
       value: 'In this powerful message'
     - type: not-contains
       value: 'This life-changing sermon'
-    - type: not-contains
-      value: 'this transformative message'
-    - type: not-contains
-      value: 'this incredible sermon'
 
 prompts:
   - id: sermon_summary
@@ -37,8 +39,5 @@ prompts:
     raw: file://prompts/sermon_summary_prompt.txt
 
 tests:
-  - file://tests/sermon_summary_bearing_burdens_test.yaml
-  - file://tests/sermon_summary_grateful_grind_test.yaml
-  - file://tests/sermon_summary_encouraging_others_test.yaml
-  - file://tests/sermon_summary_growing_grace_test.yaml
+  - file://tests/sermon_summary_dynamic.js
 

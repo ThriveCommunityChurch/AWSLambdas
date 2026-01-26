@@ -20,7 +20,7 @@ defaultTest:
     timeout: 180000
   assert:
     - type: is-json
-    # Basic banned phrases (individual test)
+    # Marketing language (banned)
     - type: not-contains
       value: 'Join us as we'
     - type: not-contains
@@ -37,6 +37,32 @@ defaultTest:
       value: 'In a world'
     - type: not-contains
       value: 'How will you respond'
+    # Reflective phrases (banned - causes title echo and passive voice)
+    - type: not-contains
+      value: 'is presented as'
+    - type: not-contains
+      value: 'is identified as'
+    - type: not-contains
+      value: 'is confessed as'
+    - type: not-contains
+      value: 'is framed as'
+    - type: not-contains
+      value: 'centers on'
+    - type: not-contains
+      value: 'the core insight'
+    - type: not-contains
+      value: 'the core teaching'
+    - type: not-contains
+      value: 'the main point'
+    # Meta-commentary (banned)
+    - type: not-contains
+      value: 'this sermon'
+    - type: not-contains
+      value: 'the sermon'
+    - type: not-contains
+      value: 'this message'
+    - type: not-contains
+      value: 'the passage'
 
 prompts:
   - id: sermon_summary
