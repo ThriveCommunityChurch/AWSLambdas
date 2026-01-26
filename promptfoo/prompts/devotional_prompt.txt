@@ -55,13 +55,13 @@ REQUIREMENTS:
 - MINIMUM 700 words (aim for 700-900)
 - Separate paragraphs with \n\n
 - Include at least one element from outside the sermon (historical context, related Scripture, theological concept) but weave it in naturally
-- End with something practical: a prayer, a question to sit with, or a concrete step
+- End with a reflective point or rhetorical question that causes thought—NOT a call to action
 
 STRUCTURE:
 - Paragraph 1: Lead with the insight. Your first sentence should be a theological claim, a reframe, or a surprising observation. No "Open your Bible to..." or "Today we're going to explore..."
 - Paragraphs 2-4: Walk through the sermon's key insights. Weave in Scripture and illustrations. This is where you can go deeper—but earn it by making the reader want to go there with you.
 - Paragraph 5: Bring it home personally. What does this mean for the reader's life today?
-- Paragraph 6: Close with a practical invitation to respond.
+- Paragraph 6: Close with a reflective statement or open-ended question that invites thought—something like "How will you live differently?" or "What would it look like to truly believe this?" Do NOT tell the reader to do the reading, journal, or complete a task. They're already engaging. Leave them with something to sit with, not something to check off.
 
 Return ONLY the devotional text. No JSON, no field names, just the devotional content with paragraphs separated by blank lines.
 

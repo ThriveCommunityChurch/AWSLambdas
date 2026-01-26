@@ -8,6 +8,7 @@ ACCURACY RULES:
 3. "additionalStudy" is for related passages NOT mentioned in the sermon
 4. If unsure whether something was said, LEAVE IT OUT
 5. Don't mention speaker, church, or organization names
+6. NEVER refer to "the speaker," "this sermon," "this message," or "the pastor" in reflection questions, application questions, or any reader-facing content. Write as if the reader is encountering these truths directly, not reading about a sermon they attended.
 
 CRITICAL RULES FOR SUMMARY AND DEVOTIONAL:
 1. NEVER start the summary or devotional with the sermon title or any word from the title. If the title is "Wonder," do not begin with "Wonder..." If the title is "Delight," do not begin with "Delight..."
@@ -100,16 +101,16 @@ Other arrays (illustrations, additionalStudy, scriptureReferences) may be empty 
 
   "discussionQuestions": {
     "icebreaker": [
-      "An easy, relatable question connected to the sermon's theme that everyone can answer without needing Bible knowledge.",
+      "An easy, relatable question connected to the theme that everyone can answer without needing Bible knowledge.",
       "Another accessible opening question that draws people in using everyday experiences related to the topic."
     ],
     "reflection": [
-      "A question that invites honest self-examination using specific content from this sermon, phrased gently and without shame.",
-      "Another reflection question that helps people connect the sermon's message to their own story or struggles.",
-      "A deeper question that explores a specific point, illustration, or scripture from the sermon."
+      "A question that invites honest self-examination using specific content, phrased gently and without shame. Do NOT say 'the speaker said' — just quote or reference the idea directly.",
+      "Another reflection question that helps people connect the truths to their own story or struggles.",
+      "A deeper question that explores a specific point, illustration, or scripture."
     ],
     "application": [
-      "A question that moves toward concrete, grace-filled next steps (what this could look like in everyday life), clearly tied to this sermon.",
+      "A question that moves toward concrete, grace-filled next steps (what this could look like in everyday life). Do NOT say 'this sermon' or 'this message' — just ask about life application.",
       "Another practical question that helps people identify one specific action they can take this week."
     ]
   },
@@ -143,11 +144,11 @@ Other arrays (illustrations, additionalStudy, scriptureReferences) may be empty 
 }
 
 QUESTION QUALITY PRINCIPLE:
-Every question should contain a fingerprint of THIS sermon. Reference a specific quote, illustration, Scripture phrase, or idea that only appears in THIS message. A good question couldn't be copy-pasted into any other study guide—it's anchored to something concrete the speaker said.
+Every question should contain a fingerprint of THIS content. Reference a specific quote, illustration, Scripture phrase, or idea that only appears here. A good question couldn't be copy-pasted into any other study guide—it's anchored to something concrete from the teaching.
 
-Example of specificity: "The speaker said 'every saint has a past and every sinner has a future.' Which part of that statement is harder for you to believe about yourself right now, and why?"
+Example of specificity: "'Every saint has a past and every sinner has a future.' Which part of that statement is harder for you to believe about yourself right now, and why?"
 
-Notice how the question quotes the sermon directly, then asks something personal that builds on that exact phrase. This is the standard.
+Notice how the question quotes directly, then asks something personal that builds on that exact phrase. This is the standard. Do NOT write "The speaker said..." or "In this sermon..." — just use the quote or idea directly.
 
 AUTHENTICITY CHECKLIST (for your own internal use):
 - Would a real small group leader who heard THIS sermon ask these questions?

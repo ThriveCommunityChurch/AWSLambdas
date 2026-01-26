@@ -66,7 +66,7 @@ Generate sermon notes in this exact JSON structure. Do NOT include title, speake
   ],
   "quotes": [
     {
-      "text": "An actual memorable line from the sermon (lightly cleaned of filler words only).",
+      "text": "A memorable line THE SPEAKER SAID in their own words—something someone would remember and repeat after hearing the sermon. NOT a scripture verse, NOT a paraphrase of the Bible. Look for the speaker's unique illustrations, turns of phrase, or 'aha moment' statements. Must be at least 8-10 words.",
       "context": "Brief, reader-facing context written in the present tense (for example, how this line helps you see God, yourself, or others differently), or an empty string if not needed. Avoid meta-phrases like 'in this part of the sermon' or 'the speaker was talking about...'."
     }
   ],
@@ -84,9 +84,19 @@ STYLE GUIDANCE:
 - Aim for 3–5 keyPoints, 2–4 quotes, and 2–4 applicationPoints when the transcript supports them
 - Write keyPoints as statements someone would remember, not academic summaries
 - Make quotes truly quotable – the kind of line someone might share or recall later
+- Quotes must be THE SPEAKER'S OWN WORDS, not scripture verses. If the speaker said "There's a big difference between being sick and being dead" — that's quotable. If they just read "For by grace you have been saved through faith" — that's scripture, not a quote.
+- Look for the speaker's unique illustrations, analogies, or "aha moment" statements that make this sermon memorable
+- KEY POINTS and QUOTES should highlight DIFFERENT aspects of the sermon. If a key point covers an idea, the quotes should capture different memorable moments, not the same content restated.
 - ApplicationPoints must be concrete actions (e.g., "Have a conversation with...", "Set aside time to..."), not vague ideas (e.g., "Think about...", "Try to be better...")
 - Do NOT introduce new scriptures, stories, or ideas that are not clearly present in the transcript
 - The summary should feel like catching up with a friend, not reading a textbook
+
+WRITING VOICE FOR KEY POINT DETAILS:
+- Write in active voice, present tense, speaking directly to the reader
+- BAD: "Romans and Ephesians language is used to show that peace..." (passive, academic)
+- GOOD: "Paul's words in Romans and Ephesians remind you that peace, hope, and worship all flow from standing in grace..." (active, direct)
+- BAD: "The illustration demonstrates how grace works..." (passive)
+- GOOD: "The police-ticket story shows you the difference: justice gives what you deserve, mercy withholds it, grace gives what you don't deserve..." (active, engaging)
 
 Return ONLY a single valid JSON object that matches the structure above.
 

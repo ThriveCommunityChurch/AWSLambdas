@@ -8,6 +8,7 @@ ACCURACY RULES:
 3. "additionalStudy" is for related passages NOT mentioned in the sermon
 4. If unsure whether something was said, LEAVE IT OUT
 5. Don't mention speaker, church, or organization names
+6. NEVER refer to "the speaker," "this sermon," "this message," or "the pastor" in reflection questions, application questions, or any reader-facing content. Write as if the reader is encountering these truths directly, not reading about a sermon they attended.
 
 CRITICAL RULES FOR SUMMARY AND DEVOTIONAL:
 1. NEVER start the summary or devotional with the sermon title or any word from the title. If the title is "Wonder," do not begin with "Wonder..." If the title is "Delight," do not begin with "Delight..."
@@ -100,23 +101,23 @@ Other arrays (illustrations, additionalStudy, scriptureReferences) may be empty 
 
   "discussionQuestions": {
     "icebreaker": [
-      "An easy, relatable question connected to the sermon's theme that everyone can answer without needing Bible knowledge.",
+      "An easy, relatable question connected to the theme that everyone can answer without needing Bible knowledge.",
       "Another accessible opening question that draws people in using everyday experiences related to the topic."
     ],
     "reflection": [
-      "A question that invites honest self-examination using specific content from this sermon, phrased gently and without shame.",
-      "Another reflection question that helps people connect the sermon's message to their own story or struggles.",
-      "A deeper question that explores a specific point, illustration, or scripture from the sermon."
+      "A question that invites honest self-examination using specific content, phrased gently and without shame. Do NOT say 'the speaker said' — just quote or reference the idea directly.",
+      "Another reflection question that helps people connect the truths to their own story or struggles.",
+      "A deeper question that explores a specific point, illustration, or scripture."
     ],
     "application": [
-      "A question that moves toward concrete, grace-filled next steps (what this could look like in everyday life), clearly tied to this sermon.",
+      "A question that moves toward concrete, grace-filled next steps (what this could look like in everyday life). Do NOT say 'this sermon' or 'this message' — just ask about life application.",
       "Another practical question that helps people identify one specific action they can take this week."
     ]
   },
 
   "illustrations": [
     {
-      "summary": "Brief description of a story or example from the sermon, written so the reader can picture it without saying 'the speaker shared...'.",
+      "summary": "Brief description of a story or example, written so the reader can picture it without saying 'the speaker shared...'.",
       "point": "What that story or example illustrates for the reader's life right now (for example, what it reveals about God, the heart, faith, or relationships), stated in clear, present-tense language."
     }
   ],
@@ -126,16 +127,16 @@ Other arrays (illustrations, additionalStudy, scriptureReferences) may be empty 
   ],
 
   "takeHomeChallenges": [
-    "A concrete, realistic action for the coming week that applies the sermon in everyday life (not just a vague idea)."
+    "A concrete, realistic action for the coming week that applies these truths in everyday life (not just a vague idea)."
   ],
 
-  "devotional": "REQUIRED: 5–6 substantial paragraphs, MINIMUM 700 words (aim for 700–900). Separate paragraphs with \\n\\n. This is a contemplative, led study session for individual or group reflection.\n\nWORD COUNT: Each paragraph should average 120–150 words. If your devotional is under 700 words, expand the theological depth, add more Scripture connections, or develop the practical application further.\n\nDEVOTIONAL STRUCTURE:\n- Paragraph 1: Lead with the insight, not an instruction. The reader doesn't need to be told to open, sit, read, picture, or turn anywhere—they're already here. Your first sentence should be a theological claim, a reframe, or a surprising observation that makes them want to keep reading.\n- Paragraphs 2-4: Walk through the sermon's key insights, weaving in Scripture and the speaker's illustrations. Pull from outside sources (historical context, word studies, other biblical passages, theological concepts) to deepen the point. This is where you teach and illuminate. Take your time here—these paragraphs carry the weight of the devotional.\n- Paragraph 5: Bring it home personally. What does this mean for the reader's life today? Be specific and grace-filled.\n- Paragraph 6: Close with a practical invitation to respond—a prayer, a question to sit with, or a concrete step.\n\nTONE: Contemplative, warm, honest. Like a spiritual director or thoughtful friend walking you through the text. Not preachy, not academic, not rushed.\n\nOPENING PRINCIPLE: Start with the theological insight itself. The strongest devotional openings make a claim or observation that immediately engages the mind: 'Forgiveness in Luke 7 isn't about erasing the past—it's about receiving a new future.' Notice how this begins with the idea, not with an instruction to the reader.\n\nOUTSIDE SOURCES: Actively incorporate at least one element from outside the sermon transcript—a word study, historical context, a related Scripture passage, a theological concept, or a quote from a respected Christian thinker. This enriches the devotional and demonstrates depth.",
+  "devotional": "REQUIRED: 5–6 substantial paragraphs, MINIMUM 700 words (aim for 700–900). Separate paragraphs with \\n\\n. This is a contemplative, led study session for individual or group reflection.\n\nWORD COUNT: Each paragraph should average 120–150 words. If your devotional is under 700 words, expand the theological depth, add more Scripture connections, or develop the practical application further.\n\nDEVOTIONAL STRUCTURE:\n- Paragraph 1: Lead with the insight, not an instruction. The reader doesn't need to be told to open, sit, read, picture, or turn anywhere—they're already here. Your first sentence should be a theological claim, a reframe, or a surprising observation that makes them want to keep reading.\n- Paragraphs 2-4: Walk through the key insights, weaving in Scripture and illustrations. Pull from outside sources (historical context, word studies, other biblical passages, theological concepts) to deepen the point. This is where you teach and illuminate. Take your time here—these paragraphs carry the weight of the devotional.\n- Paragraph 5: Bring it home personally. What does this mean for the reader's life today? Be specific and grace-filled.\n- Paragraph 6: Close with a reflective statement or open-ended question that invites thought—something like 'How will you live differently?' or 'What would it look like to truly believe this?' Do NOT tell the reader to journal, do a task, or complete the reading. Leave them with something to sit with.\n\nTONE: Contemplative, warm, honest. Like a spiritual director or thoughtful friend walking you through the text. Not preachy, not academic, not rushed.\n\nOPENING PRINCIPLE: Start with the theological insight itself. The strongest devotional openings make a claim or observation that immediately engages the mind: 'Forgiveness in Luke 7 isn't about erasing the past—it's about receiving a new future.' Notice how this begins with the idea, not with an instruction to the reader.\n\nOUTSIDE SOURCES: Actively incorporate at least one element from outside the transcript—a word study, historical context, a related Scripture passage, a theological concept, or a quote from a respected Christian thinker. This enriches the devotional and demonstrates depth.",
 
   "additionalStudy": [
     {
-      "topic": "A theme from the sermon worth exploring further.",
-      "scriptures": ["Related passages for deeper study (not necessarily mentioned in the sermon)."],
-      "note": "Briefly explain how these passages connect back to the sermon's core Scripture and themes."
+      "topic": "A theme worth exploring further.",
+      "scriptures": ["Related passages for deeper study (not necessarily mentioned)."],
+      "note": "Briefly explain how these passages connect back to the core Scripture and themes."
     }
   ],
 
@@ -143,11 +144,11 @@ Other arrays (illustrations, additionalStudy, scriptureReferences) may be empty 
 }
 
 QUESTION QUALITY PRINCIPLE:
-Every question should contain a fingerprint of THIS sermon. Reference a specific quote, illustration, Scripture phrase, or idea that only appears in THIS message. A good question couldn't be copy-pasted into any other study guide—it's anchored to something concrete the speaker said.
+Every question should contain a fingerprint of THIS content. Reference a specific quote, illustration, Scripture phrase, or idea that only appears here. A good question couldn't be copy-pasted into any other study guide—it's anchored to something concrete from the teaching.
 
-Example of specificity: "The speaker said 'every saint has a past and every sinner has a future.' Which part of that statement is harder for you to believe about yourself right now, and why?"
+Example of specificity: "'Every saint has a past and every sinner has a future.' Which part of that statement is harder for you to believe about yourself right now, and why?"
 
-Notice how the question quotes the sermon directly, then asks something personal that builds on that exact phrase. This is the standard.
+Notice how the question quotes directly, then asks something personal that builds on that exact phrase. This is the standard. Do NOT write "The speaker said..." or "In this sermon..." — just use the quote or idea directly.
 
 AUTHENTICITY CHECKLIST (for your own internal use):
 - Would a real small group leader who heard THIS sermon ask these questions?
