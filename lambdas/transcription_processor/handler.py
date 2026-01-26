@@ -518,7 +518,8 @@ def build_notes_prompt_from_file(transcript: str, metadata: Dict[str, Any]) -> s
 
 def validate_notes(notes: Dict[str, Any], transcript: str) -> Tuple[bool, str, Dict[str, Any]]:
     """
-    Validate generated notes structure and content against transcript.
+    Validate generated notes structure (structural validation only).
+    Content validation is handled by promptfoo evals before deployment.
     Returns (is_valid, message, notes_with_validation).
     """
     # Structural validation (required fields)
@@ -550,42 +551,15 @@ def validate_notes(notes: Dict[str, Any], transcript: str) -> Tuple[bool, str, D
     if not isinstance(app_points, list) or len(app_points) < 1:
         return False, "applicationPoints must be an array with at least 1 item", notes
 
-    # Content validation (check against transcript)
-    issues = []
-    transcript_lower = transcript.lower()
-
-    # Check quotes exist in transcript
-    for quote in quotes:
-        quote_text = quote.get('text', '').lower()
-        # Allow some flexibility for cleaned-up quotes - check first 5 words
-        words = quote_text.split()[:5]
-        search_text = ' '.join(words)
-        if search_text and search_text not in transcript_lower:
-            issues.append(f"Quote may not be verbatim: '{quote_text[:50]}...'")
-
-    # Check scripture references exist in transcript
-    for point in key_points:
-        scripture = point.get('scripture', '')
-        if scripture:
-            book = scripture.split()[0].lower() if scripture else ''
-            if book and book not in transcript_lower:
-                issues.append(f"Scripture '{scripture}' not found in transcript")
-
-    notes['_validation'] = {
-        'passed': True,
-        'issues': issues,
-        'validated': len(issues) == 0
-    }
-
-    if issues:
-        print(f"Notes validation warnings: {issues}")
-
+    # Store validation metadata
+    notes['_validation'] = {'passed': True}
     return True, "Valid", notes
 
 
 def validate_study_guide(guide: Dict[str, Any], transcript: str) -> Tuple[bool, str, Dict[str, Any]]:
     """
-    Validate study guide structure and content against transcript.
+    Validate study guide structure (structural validation only).
+    Content validation is handled by promptfoo evals before deployment.
     Returns (is_valid, message, guide_with_validation).
     """
     # Structural validation (required fields)
@@ -624,27 +598,8 @@ def validate_study_guide(guide: Dict[str, Any], transcript: str) -> Tuple[bool, 
     if not isinstance(devotional, str) or len(devotional.strip()) < 100:
         return False, "devotional must be a non-empty string with at least 100 characters", guide
 
-    # Content validation (check against transcript)
-    issues = []
-    transcript_lower = transcript.lower()
-
-    # Check directly quoted scriptures
-    for ref in guide.get('scriptureReferences', []):
-        if ref.get('directlyQuoted'):
-            reference = ref.get('reference', '')
-            book = reference.split()[0].lower() if reference else ''
-            if book and book not in transcript_lower:
-                issues.append(f"Marked as quoted but not found: '{reference}'")
-
-    guide['_validation'] = {
-        'passed': True,
-        'issues': issues,
-        'validated': len(issues) == 0
-    }
-
-    if issues:
-        print(f"Study guide validation warnings: {issues}")
-
+    # Store validation metadata
+    guide['_validation'] = {'passed': True}
     return True, "Valid", guide
 
 

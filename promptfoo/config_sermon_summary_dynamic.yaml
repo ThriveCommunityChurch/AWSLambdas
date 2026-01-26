@@ -1,11 +1,14 @@
 # yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
-description: 'Sermon Summary Dynamic Evaluation - 10 random sermons from production'
+description: 'Sermon Summary Dynamic Evaluation - random sermons from production'
 
-# This config fetches 10 random sermons from MongoDB and generates summaries
-# using the updated prompt. Compares output against title echo and reflective phrase patterns.
+# This config fetches random sermons from MongoDB and generates summaries.
+# Includes cross-sample repetition analysis via afterAll hook.
 #
 # Usage: npx promptfoo eval -c config_sermon_summary_dynamic.yaml -o results_sermon_summary_dynamic.json
-# Set SERMON_EVAL_LIMIT env var to change count (default: 10)
+# Set SERMON_EVAL_LIMIT env var to change count (default: 10, recommend 20+ for repetition analysis)
+
+extensions:
+  - file://hooks/sermon_summary_hooks.js:extensionHook
 
 providers:
   - id: azure:chat:gpt-5-mini

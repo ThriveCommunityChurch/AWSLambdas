@@ -5,31 +5,47 @@ Goal: State the insights as timeless truths in present tense. Write direct state
 THE KEY PRINCIPLE:
 State the truth directly. Don't report on the sermon—just say what's true.
 
-GOOD (lead with truth, conversational, "we" sparingly):
-- "Forgiveness restores what sin has broken. Jesus meets people in ordinary places and names their shame so he can remove it. Then he calls them back into mission with renewed purpose."
-- "Speech steers life the way a rudder steers a ship. What comes out of the mouth reveals what fills the heart, and those words shape relationships for better or worse."
-- "Grace arrives before anyone earns it. God does not wait for people to clean themselves up—he pursues the vulnerable himself and accomplishes what he promises."
+CRITICAL RULES:
+1. NEVER start with the sermon title or any word from the title. If the title is "Grace," do not begin with "Grace..." If the title is "Delight," do not begin with "Delight..."
+2. NEVER use semicolons to separate a point from its explanation (e.g., "Truth; it sets us free"). Write flowing prose instead.
+3. The first sentence must make complete sense to someone who has never seen the title.
+4. VARY your opening words across summaries. Do NOT always start with "God"—use diverse sentence structures like starting with a noun, verb, or observation about life.
 
-BAD (reporting on the sermon):
-- "Jesus' return is presented as the culmination..." → Just say: "When Jesus returns, every wrong will be made right."
-- "The core insight is that grace..." → Just say: "Grace meets us before we clean ourselves up."
-- "Words Matter: our speech shapes..." → Don't echo the title. Start fresh with the insight.
+GOOD OPENING VARIETY (notice different first words):
+- "Forgiveness restores what sin has broken..." (starts with noun)
+- "Speech steers life the way a rudder steers a ship..." (starts with noun)
+- "True freedom comes not from independence but from surrender..." (starts with adjective)
+- "When pride takes the wheel, relationships crash..." (starts with subordinate clause)
+- "The cross turns worldly power upside down..." (starts with article + noun)
+- "Broken people often become the most effective healers..." (starts with adjective + noun)
 
-Notice the pattern: bad examples describe what the sermon does ("is presented as", "the core insight is"). Good examples just state the truth directly.
+BAD (repetitive "God" openings—avoid this pattern):
+- "God gives what no one has earned..."
+- "God pursues the vulnerable..."
+- "God creates humans with emotions..."
+- "God inhabits the church..."
+These are all true statements, but starting every summary with "God" becomes monotonous. Mix it up.
+
+BAD (echoing title or using semicolons):
+- "Grace is God's undeserved favor..." → Title echo. Start with the insight instead.
+- "Delight in the Lord resets perspective..." → Title echo. Try: "Perspective shifts when someone fixes their eyes on what lasts..."
+- "Peace; it comes from trust..." → Semicolon pattern. Write: "Peace comes from trust, not from circumstances."
+- "Words Matter: our speech shapes..." → Colon pattern echoing title. Start fresh with the insight.
+
+Notice the pattern: bad examples echo the title word, use punctuation shortcuts, or always start with "God." Good examples vary their openings.
 
 TONE:
 - Neutral and educational
 - Lead with the truth itself, not "we" statements
 - Use "we/us/our" sparingly—once or twice per summary, not as the default voice
 - State what IS true, then occasionally note how it applies to us
-- Conversational and expositional, not listy—avoid stacking comma-separated items
-- Avoid "Topic: explanation" colon patterns—they read like outlines, not prose
+- Conversational and flowing prose—no semicolon shortcuts, no listy stacking
 
 APPROACH:
-- Lead with a concrete insight, not the sermon title
+- Lead with a concrete insight that doesn't repeat the title
 - The first sentence should make sense without knowing the title
 - Write statements someone could remember and apply, not a report
-- Develop ideas with sentences, not lists of traits or concepts
+- Develop ideas with complete sentences, not fragments joined by semicolons
 
 SERMON METADATA:
 - Title: {{title}}
@@ -39,4 +55,4 @@ SERMON METADATA:
 TRANSCRIPT:
 {{transcript}}
 
-OUTPUT: Single paragraph, max 120 words. State the truths directly. No JSON, no markdown—just the summary text.
+OUTPUT: Single paragraph, max 120 words. State the truths directly. Do NOT start with the title word. No JSON, no markdown—just the summary text.
