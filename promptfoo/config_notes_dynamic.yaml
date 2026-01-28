@@ -32,6 +32,33 @@ defaultTest:
       value: 'this transformative message'
     - type: not-contains
       value: 'this incredible sermon'
+    # Repetitive patterns from cached outputs
+    - type: not-contains
+      value: 'Right now, you are invited'
+    - type: not-contains
+      value: 'you are invited into'
+    - type: not-contains
+      value: 'you are invited to'
+    # Only catch promotional closings, not educational context
+    - type: not-contains
+      value: 'Step into this'
+    - type: not-contains
+      value: 'Step into freedom'
+    - type: not-contains
+      value: 'Step into grace'
+    # No speaker references
+    - type: not-contains
+      value: 'the speaker'
+    - type: not-contains
+      value: 'The speaker'
+    - type: not-contains
+      value: 'the pastor'
+    - type: not-contains
+      value: 'The pastor'
+    - type: not-contains
+      value: 'the preacher'
+    - type: not-contains
+      value: 'The preacher'
     - type: is-json
 
 prompts:

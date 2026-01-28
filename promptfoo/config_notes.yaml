@@ -43,6 +43,19 @@ defaultTest:
       value: 'Step into freedom'
     - type: not-contains
       value: 'Step into grace'
+    # No speaker references
+    - type: not-contains
+      value: 'the speaker'
+    - type: not-contains
+      value: 'The speaker'
+    - type: not-contains
+      value: 'the pastor'
+    - type: not-contains
+      value: 'The pastor'
+    - type: not-contains
+      value: 'the preacher'
+    - type: not-contains
+      value: 'The preacher'
     - type: is-json
 
 prompts:

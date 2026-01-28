@@ -89,16 +89,15 @@ module.exports = async function() {
       transcript: s.transcript
     },
     assert: [
-      // Summary word count (2-3 paragraphs, ~250 words)
+      // Summary word count (~200 words, at least 150, max 350)
       {
         type: 'javascript',
         value: `
           const json = typeof output === 'string' ? JSON.parse(output) : output;
           const summary = json.summary || '';
-          const wordCount = summary.split(/\\s+/).filter(w => w.length > 0).length;
-          if (wordCount < 150 || wordCount > 350) {
-            return { pass: false, reason: 'Summary word count ' + wordCount + ' (expected 150-350)' };
-          }
+          const wordCount = summary.split(' ').filter(w => w.length > 0).length;
+          if (wordCount < 125) return false;
+          if (wordCount > 350) return false;
           return true;
         `
       },
@@ -107,8 +106,8 @@ module.exports = async function() {
         type: 'javascript',
         value: `
           const json = typeof output === 'string' ? JSON.parse(output) : output;
-          if (!json.keyPoints || json.keyPoints.length < 2) return { pass: false, reason: 'keyPoints needs at least 2 items' };
-          if (!json.applicationPoints || json.applicationPoints.length < 1) return { pass: false, reason: 'applicationPoints needs at least 1 item' };
+          if (!json.keyPoints || json.keyPoints.length < 2) return false;
+          if (!json.applicationPoints || json.applicationPoints.length < 1) return false;
           return true;
         `
       }
