@@ -243,7 +243,7 @@ def download_audio_from_s3(audio_url: str) -> Optional[str]:
         from urllib.parse import urlparse
 
         # Parse S3 URL format: https://bucket.s3.us-east-2.amazonaws.com/key
-        # Example: https://thrive-audio.s3.us-east-2.amazonaws.com/2025/2025-11-30-Recording.mp3
+        # Example: https://podcast.thrive-fl.org/2025/2025-11-30-Recording.mp3
         parsed = urlparse(audio_url)
         bucket = parsed.netloc.split('.')[0]  # thrive-audio
         key = parsed.path.lstrip('/')  # 2025/2025-11-30-Recording.mp3

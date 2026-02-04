@@ -565,7 +565,7 @@ def generate_waveform_from_s3(audio_url: str, num_points: int = 480) -> Optional
         s3 = boto3.client('s3')
 
         # Parse S3 URL to get bucket and key
-        # Format: https://thrive-audio.s3.us-east-2.amazonaws.com/2025/file.mp3
+        # Format: https://podcast.thrive-fl.org/2025/file.mp3
         # or s3://thrive-audio/2025/file.mp3
         if audio_url.startswith('s3://'):
             parts = audio_url[5:].split('/', 1)
