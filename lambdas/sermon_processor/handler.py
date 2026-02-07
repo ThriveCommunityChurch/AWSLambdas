@@ -33,6 +33,7 @@ from bson import ObjectId
 DB_NAME = 'SermonSeries'
 COLLECTION_NAME = 'Messages'
 SERIES_SUMMARY_LAMBDA_NAME = os.environ.get('SERIES_SUMMARY_LAMBDA_NAME', 'series-summary-processor-prod')
+S3_BUCKET = os.environ.get('S3_BUCKET', 'thrive-audio')
 
 # Prompt file paths
 PROMPTS_DIR = os.path.join(os.path.dirname(__file__), 'prompts')
@@ -575,7 +576,7 @@ def generate_waveform_from_s3(audio_url: str, num_points: int = 480) -> Optional
             # https://bucket.s3.region.amazonaws.com/key
             from urllib.parse import urlparse
             parsed = urlparse(audio_url)
-            bucket = parsed.netloc.split('.')[0]
+            bucket = S3_BUCKET  # Use environment variable instead of parsing from URL
             key = parsed.path.lstrip('/')
         else:
             print(f"Unsupported audio URL format: {audio_url}")
