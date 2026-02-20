@@ -99,13 +99,7 @@ def configure_langfuse():
         except Exception as e:
             print(f"Warning: Could not configure Langfuse: {e}")
 
-    # Set default tags with Lambda function name for trace identification
-    try:
-        import langfuse
-        lambda_name = os.environ.get('AWS_LAMBDA_FUNCTION_NAME', 'local')
-        langfuse.configure(default_tags=[lambda_name])
-    except Exception:
-        pass
+
 
 
 def get_openai_client():
@@ -841,17 +835,25 @@ def lambda_handler(event, context):
             'body': 'Missing transcript'
         }
 
+    # Get Lambda function name for Langfuse tagging
+    lambda_name = os.environ.get('AWS_LAMBDA_FUNCTION_NAME', 'local')
+
     client = None
     try:
-        # Generate content using hybrid approach
-        print(f"Processing sermon: {message_id} - {title}")
+        # Import propagate_attributes for Langfuse tagging
+        from langfuse import propagate_attributes
 
-        # Step 1: Generate summary first
-        summary = generate_sermon_summary(transcript, title, speaker, date)
+        # Wrap all LLM calls with Lambda function name tag
+        with propagate_attributes(tags=[lambda_name]):
+            # Generate content using hybrid approach
+            print(f"Processing sermon: {message_id} - {title}")
 
-        # Step 2: Generate tags using BOTH summary and transcript (hybrid approach)
-        # This provides better context - summary for main themes, transcript for comprehensive coverage
-        tags = generate_tags(summary, transcript, title)
+            # Step 1: Generate summary first
+            summary = generate_sermon_summary(transcript, title, speaker, date)
+
+            # Step 2: Generate tags using BOTH summary and transcript (hybrid approach)
+            # This provides better context - summary for main themes, transcript for comprehensive coverage
+            tags = generate_tags(summary, transcript, title)
 
         waveform_data = None
         if generate_waveform and audio_url:

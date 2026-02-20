@@ -117,13 +117,7 @@ def configure_langfuse():
         except Exception as e:
             print(f"Warning: Could not configure Langfuse: {e}")
 
-    # Set default tags with Lambda function name for trace identification
-    try:
-        import langfuse
-        lambda_name = os.environ.get('AWS_LAMBDA_FUNCTION_NAME', 'local')
-        langfuse.configure(default_tags=[lambda_name])
-    except Exception:
-        pass
+
 
 
 def get_openai_client():
@@ -1162,9 +1156,13 @@ def lambda_handler(event, context):
             }
 
         # Step 3: Generate sermon notes and study guide
+        # Wrap LLM calls with Lambda function name tag for Langfuse tracing
+        lambda_name = os.environ.get('AWS_LAMBDA_FUNCTION_NAME', 'local')
         sermon_notes = None
         study_guide = None
         try:
+            from langfuse import propagate_attributes
+
             # Convert date to string for prompt templates (replace() expects strings)
             date_value = metadata.get('date', '')
             if isinstance(date_value, datetime):
@@ -1174,8 +1172,11 @@ def lambda_handler(event, context):
                 'speaker': metadata.get('speaker', ''),
                 'date': date_value
             }
-            sermon_notes = generate_sermon_notes(transcript, generation_metadata)
-            study_guide = generate_study_guide(transcript, generation_metadata)
+
+            # Tag all LLM calls with Lambda function name
+            with propagate_attributes(tags=[lambda_name]):
+                sermon_notes = generate_sermon_notes(transcript, generation_metadata)
+                study_guide = generate_study_guide(transcript, generation_metadata)
         except Exception as e:
             print(f"Warning: Notes/study guide generation error: {e}, continuing without them")
 

@@ -102,13 +102,7 @@ def configure_langfuse():
         except Exception as e:
             print(f"Warning: Could not configure Langfuse: {e}")
 
-    # Set default tags with Lambda function name for trace identification
-    try:
-        import langfuse
-        lambda_name = os.environ.get('AWS_LAMBDA_FUNCTION_NAME', 'local')
-        langfuse.configure(default_tags=[lambda_name])
-    except Exception:
-        pass
+
 
 
 def get_openai_client():
@@ -614,26 +608,34 @@ def lambda_handler(event, context):
     """
     action = event.get('action', 'upsert')
 
+    # Get Lambda function name for Langfuse tagging
+    lambda_name = os.environ.get('AWS_LAMBDA_FUNCTION_NAME', 'local')
+
     client = None
     try:
+        # Import propagate_attributes for Langfuse tagging
+        from langfuse import propagate_attributes
+
         client = get_mongodb_client()
         db = client[DB_NAME]
 
-        if action == 'rebuild':
-            result = rebuild_feed(db)
-        elif action == 'upsert':
-            episode_data = event.get('episode', {})
-            if not episode_data.get('messageId'):
+        # Wrap all operations with Lambda function name tag (upsert may call LLM)
+        with propagate_attributes(tags=[lambda_name]):
+            if action == 'rebuild':
+                result = rebuild_feed(db)
+            elif action == 'upsert':
+                episode_data = event.get('episode', {})
+                if not episode_data.get('messageId'):
+                    return {
+                        'statusCode': 400,
+                        'body': 'Missing messageId in episode data'
+                    }
+                result = upsert_episode(db, episode_data)
+            else:
                 return {
                     'statusCode': 400,
-                    'body': 'Missing messageId in episode data'
+                    'body': f'Unknown action: {action}'
                 }
-            result = upsert_episode(db, episode_data)
-        else:
-            return {
-                'statusCode': 400,
-                'body': f'Unknown action: {action}'
-            }
 
         return {
             'statusCode': 200,

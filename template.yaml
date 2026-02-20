@@ -75,6 +75,8 @@ Resources:
           PODCAST_LAMBDA_NAME: !Sub podcast-rss-generator-${Environment}
           # Azure Blob Storage for transcripts
           AZURE_STORAGE_ACCOUNT: thrivefl
+          # OpenTelemetry service name for Langfuse traces
+          OTEL_SERVICE_NAME: !Sub transcription-processor-${Environment}
           AZURE_STORAGE_CONTAINER: transcripts
           AZURE_STORAGE_SECRET_ARN: arn:aws:secretsmanager:us-east-2:349570132161:secret:thrive-api/database
           # Azure Speech-to-Text Fast API endpoint (used when OPENAI_PROVIDER=azure)
@@ -106,6 +108,8 @@ Resources:
         Variables:
           S3_BUCKET: thrive-audio
           SERIES_SUMMARY_LAMBDA_NAME: !Sub series-summary-processor-${Environment}
+          # OpenTelemetry service name for Langfuse traces
+          OTEL_SERVICE_NAME: !Sub sermon-processor-${Environment}
 
   SermonProcessorLogGroup:
     Type: AWS::Logs::LogGroup

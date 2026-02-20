@@ -101,13 +101,7 @@ def configure_langfuse():
         except Exception as e:
             print(f"Warning: Could not configure Langfuse: {e}")
 
-    # Set default tags with Lambda function name for trace identification
-    try:
-        import langfuse
-        lambda_name = os.environ.get('AWS_LAMBDA_FUNCTION_NAME', 'local')
-        langfuse.configure(default_tags=[lambda_name])
-    except Exception:
-        pass
+
 
 
 def get_openai_client():
@@ -351,8 +345,14 @@ def lambda_handler(event, context):
 
     print(f"Processing series summary for: {series_id}")
 
+    # Get Lambda function name for Langfuse tagging
+    lambda_name = os.environ.get('AWS_LAMBDA_FUNCTION_NAME', 'local')
+
     client = None
     try:
+        # Import propagate_attributes for Langfuse tagging
+        from langfuse import propagate_attributes
+
         # Connect to MongoDB
         mongo_uri = get_mongodb_uri()
         client = pymongo.MongoClient(mongo_uri)
@@ -389,8 +389,9 @@ def lambda_handler(event, context):
                 }
             }
 
-        # Step 4: Generate summary
-        summary = generate_series_summary(series_name, messages)
+        # Step 4: Generate summary (wrap LLM call with Lambda function name tag)
+        with propagate_attributes(tags=[lambda_name]):
+            summary = generate_series_summary(series_name, messages)
         if not summary:
             return {
                 'statusCode': 500,
