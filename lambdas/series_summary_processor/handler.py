@@ -101,6 +101,14 @@ def configure_langfuse():
         except Exception as e:
             print(f"Warning: Could not configure Langfuse: {e}")
 
+    # Set default tags with Lambda function name for trace identification
+    try:
+        import langfuse
+        lambda_name = os.environ.get('AWS_LAMBDA_FUNCTION_NAME', 'local')
+        langfuse.configure(default_tags=[lambda_name])
+    except Exception:
+        pass
+
 
 def get_openai_client():
     """Create OpenAI client based on OPENAI_PROVIDER environment variable."""
