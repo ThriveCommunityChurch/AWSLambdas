@@ -85,20 +85,38 @@ def get_openai_api_key() -> str:
     return get_secret(os.environ['OPENAI_SECRET_ARN'], secret_key)
 
 
+def configure_langfuse():
+    """Configure Langfuse by fetching secret key from AWS Secrets Manager.
+
+    Must be called before any Langfuse/OpenAI imports to ensure the SDK
+    picks up the LANGFUSE_SECRET_KEY environment variable.
+    """
+    if 'LANGFUSE_SECRET_KEY' not in os.environ and 'LANGFUSE_SECRET_ARN' in os.environ:
+        try:
+            secret_key_name = os.environ.get('LANGFUSE_SECRET_KEY_NAME', 'Langfuse_SecretKey')
+            secret = get_secret(os.environ['LANGFUSE_SECRET_ARN'], secret_key_name)
+            os.environ['LANGFUSE_SECRET_KEY'] = secret
+        except Exception as e:
+            print(f"Warning: Could not configure Langfuse: {e}")
+
+
 def get_openai_client():
     """Create OpenAI client based on OPENAI_PROVIDER environment variable."""
+    # Configure Langfuse before importing the wrapped OpenAI client
+    configure_langfuse()
+
     provider = os.environ.get('OPENAI_PROVIDER', 'azure')
     api_key = get_openai_api_key()
 
     if provider == 'azure':
-        from openai import AzureOpenAI
+        from langfuse.openai import AzureOpenAI
         return AzureOpenAI(
             azure_endpoint=os.environ.get('AZURE_OPENAI_ENDPOINT', 'https://thrive-fl.openai.azure.com/'),
             api_key=api_key,
             api_version=os.environ.get('AZURE_OPENAI_API_VERSION', '2024-10-21')
         )
     else:
-        from openai import OpenAI
+        from langfuse.openai import OpenAI
         return OpenAI(api_key=api_key)
 
 
@@ -874,6 +892,12 @@ def lambda_handler(event, context):
             'body': f'Error: {str(e)}'
         }
     finally:
+        # Flush Langfuse traces before Lambda exits (required for short-lived processes)
+        try:
+            import langfuse
+            langfuse.flush()
+        except Exception:
+            pass  # Langfuse not configured or error flushing
         if client:
             client.close()
 
