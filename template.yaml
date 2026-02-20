@@ -41,6 +41,11 @@ Globals:
         OPENAI_SECRET_ARN: arn:aws:secretsmanager:us-east-2:349570132161:secret:thrive-api/openai
         # OpenAI Provider - set via CloudFormation parameter
         OPENAI_PROVIDER: !Ref OpenAIProvider
+        # Langfuse tracing - tracks LLM calls for observability
+        LANGFUSE_PUBLIC_KEY: pk-lf-db25ee45-d368-433d-9047-4ff6f70668a3
+        LANGFUSE_BASE_URL: https://us.cloud.langfuse.com
+        LANGFUSE_SECRET_ARN: arn:aws:secretsmanager:us-east-2:349570132161:secret:thrive/3rd-party
+        LANGFUSE_SECRET_KEY_NAME: LangfuseSecret
 
 # =============================================================================
 # RESOURCES
