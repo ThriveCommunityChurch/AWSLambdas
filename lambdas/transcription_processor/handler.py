@@ -694,6 +694,7 @@ def generate_content(
             if is_gpt5_model(model):
                 # GPT-5 models: no temperature, use max_completion_tokens, developer role
                 response = client.chat.completions.create(
+                    name="sermon-notes",
                     model=model,
                     messages=[
                         {"role": "developer", "content": system_content},
@@ -706,6 +707,7 @@ def generate_content(
             else:
                 # GPT-4o models: use temperature, system role
                 response = client.chat.completions.create(
+                    name="sermon-notes",
                     model=model,
                     messages=[
                         {"role": "system", "content": system_content},
@@ -822,6 +824,7 @@ def generate_devotional(transcript: str, metadata: Dict[str, Any], max_retries: 
             if is_gpt5_model(model):
                 # GPT-5 models: no temperature, use max_completion_tokens, developer role
                 response = client.chat.completions.create(
+                    name="study-guide-devotional",
                     model=model,
                     messages=[
                         {"role": "developer", "content": system_content},
@@ -833,6 +836,7 @@ def generate_devotional(transcript: str, metadata: Dict[str, Any], max_retries: 
             else:
                 # GPT-4o models: use temperature, system role
                 response = client.chat.completions.create(
+                    name="study-guide-devotional",
                     model=model,
                     messages=[
                         {"role": "system", "content": system_content},

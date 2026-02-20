@@ -394,6 +394,7 @@ def generate_sermon_summary(transcript: str, title: str, speaker: str = "", date
             # GPT-5 models: no temperature, use max_completion_tokens, developer role
             # NOTE: GPT-5 uses reasoning tokens that consume the budget, need high max_completion_tokens
             response = client.chat.completions.create(
+                name="sermon-summary",
                 model=model,
                 messages=[
                     {"role": "developer", "content": prompt}
@@ -404,6 +405,7 @@ def generate_sermon_summary(transcript: str, title: str, speaker: str = "", date
         else:
             # GPT-4o models: use temperature, user role for combined prompt
             response = client.chat.completions.create(
+                name="sermon-summary",
                 model=model,
                 messages=[
                     {"role": "user", "content": prompt}
@@ -502,6 +504,7 @@ def generate_tags(summary_text: str, transcript: str, title: str) -> List[str]:
             # GPT-5 models: no temperature, use max_completion_tokens, developer role
             # NOTE: GPT-5 uses reasoning tokens that consume the budget, need high max_completion_tokens
             response = client.chat.completions.create(
+                name="tag-generation",
                 model=model,
                 messages=[
                     {"role": "developer", "content": system_prompt},
@@ -513,6 +516,7 @@ def generate_tags(summary_text: str, transcript: str, title: str) -> List[str]:
         else:
             # GPT-4o models: use temperature, system role
             response = client.chat.completions.create(
+                name="tag-generation",
                 model=model,
                 messages=[
                     {"role": "system", "content": system_prompt},

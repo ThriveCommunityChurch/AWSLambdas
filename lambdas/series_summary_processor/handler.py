@@ -266,6 +266,7 @@ def generate_series_summary(series_name: str, messages: List[Dict[str, Any]]) ->
             # GPT-5 models: no temperature, use max_completion_tokens, developer role
             # NOTE: GPT-5 uses reasoning tokens that consume the budget, need high max_completion_tokens
             response = client.chat.completions.create(
+                name="series-summary",
                 model=model,
                 messages=[
                     {"role": "developer", "content": prompt}
@@ -276,6 +277,7 @@ def generate_series_summary(series_name: str, messages: List[Dict[str, Any]]) ->
         else:
             # GPT-4o models: use temperature, max_tokens, user role for combined prompt
             response = client.chat.completions.create(
+                name="series-summary",
                 model=model,
                 messages=[
                     {"role": "user", "content": prompt}

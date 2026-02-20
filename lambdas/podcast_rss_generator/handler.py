@@ -305,6 +305,7 @@ def generate_podcast_description(transcript: str, title: str, speaker: str, pass
             # GPT-5 models: no temperature, use max_completion_tokens, developer role
             # NOTE: GPT-5 uses reasoning tokens that consume the budget, need high max_completion_tokens
             response = client.chat.completions.create(
+                name="podcast-description",
                 model=model,
                 messages=[
                     {"role": "developer", "content": system_prompt},
@@ -316,6 +317,7 @@ def generate_podcast_description(transcript: str, title: str, speaker: str, pass
         else:
             # GPT-4o models: use temperature, system role
             response = client.chat.completions.create(
+                name="podcast-description",
                 model=model,
                 messages=[
                     {"role": "system", "content": system_prompt},
