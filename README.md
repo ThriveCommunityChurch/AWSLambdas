@@ -124,6 +124,7 @@ AWSLambdas/
 - Python 3.11+
 - AWS CLI configured
 - MongoDB connection string
+- Langfuse (for LLM visibility)
 
 ### Setup
 ```bash
