@@ -39,6 +39,11 @@ DB_NAME = 'SermonSeries'
 SERIES_COLLECTION = 'Series'
 MESSAGES_COLLECTION = 'Messages'
 
+# Series to skip processing (these series are ongoing collections that don't need AI-generated summaries)
+SKIP_SERIES_NAMES = frozenset([
+    'Guest Speakers',  # Ongoing collection of various speakers, summary is manually maintained
+])
+
 # Prompt file path
 SERIES_SUMMARY_PROMPT_FILE = os.path.join(os.path.dirname(__file__), 'prompts', 'series_summary_prompt.txt')
 
@@ -370,6 +375,19 @@ def lambda_handler(event, context):
 
         series_name = series.get('Name', 'Untitled Series')
         print(f"Found series: {series_name}")
+
+        # Check if this series should be skipped (e.g., Guest Speakers - ongoing collection)
+        if series_name in SKIP_SERIES_NAMES:
+            print(f"Skipping series '{series_name}' - in skip list")
+            return {
+                'statusCode': 200,
+                'body': {
+                    'seriesId': series_id,
+                    'seriesName': series_name,
+                    'status': 'skipped',
+                    'reason': 'Series is in the skip list (ongoing collection)'
+                }
+            }
 
         # Step 2: Get messages for this series
         messages = get_messages_for_series(db, series_id)
